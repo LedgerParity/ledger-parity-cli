@@ -1,0 +1,21 @@
+{
+  "target_app": {
+    "name": "stellopay",
+    "format": "json",
+    "source_path": "./test_stellopay.json"
+  },
+  "stellar": {
+    "horizon_url": "https://horizon-testnet.stellar.org",
+    "accounts": [
+      "GCDX1111111111111111111111111111111111111111111111111111"
+    ]
+  },
+  "reconciliation": {
+    "timeframe_tolerance_sec": 600,
+    "ignore_failed_on_chain": true
+  },
+  "output": {
+    "format": "table",
+    "file_path": "test_report.json"
+  }
+}

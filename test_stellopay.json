@@ -1,0 +1,13 @@
+[
+  {
+    "payment_id": "stell_201",
+    "batch_id": "payroll_aug_2026",
+    "employee_wallet": "GCDX1111111111111111111111111111111111111111111111111111",
+    "employer_wallet": "GABY2222222222222222222222222222222222222222222222222222",
+    "amount_xlm": 500.0,
+    "currency": "XLM",
+    "status": "COMPLETED",
+    "processed_at": "2026-08-13T12:00:00Z",
+    "stellar_tx_hash": "tx_hash_custom_1"
+  }
+]
