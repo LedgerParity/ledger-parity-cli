@@ -1,0 +1,12 @@
+# Compiled binary
+ledger-parity
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test output artifacts
+discrepancy_report.json
+test_report.json
+*.db
