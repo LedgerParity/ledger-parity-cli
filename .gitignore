@@ -1,5 +1,5 @@
-# Compiled binary
-ledger-parity
+# Compiled binary in root
+/ledger-parity
 *.exe
 *.exe~
 *.dll
