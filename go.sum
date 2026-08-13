@@ -1,0 +1,4 @@
+github.com/LedgerParity/ledger-parity-connectors v0.0.0-20260813140858-bc83393ddb07 h1:I1cdsuT35Vm9FxJWnI9szOcZ6gfuGBTitxqhpHFhU6k=
+github.com/LedgerParity/ledger-parity-connectors v0.0.0-20260813140858-bc83393ddb07/go.mod h1:vryaZ9WmMyeQ3s6Ia3lNuMmTcCMCmOism+5DLdrJLlM=
+github.com/LedgerParity/ledger-parity-core v0.0.0-20260813140842-580ad986a9e4 h1:kkCtrHOlPrOq8T02AwMJLPaZMhdgy9wTIrNNBrRPC/Q=
+github.com/LedgerParity/ledger-parity-core v0.0.0-20260813140842-580ad986a9e4/go.mod h1:eoscIrkPi93KKBENG83XwFFTSHlhYyeZkltIWdDCeaw=
