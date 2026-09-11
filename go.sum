@@ -2,3 +2,5 @@ github.com/LedgerParity/ledger-parity-connectors v0.0.0-20260911220239-902fa7808
 github.com/LedgerParity/ledger-parity-connectors v0.0.0-20260911220239-902fa7808860/go.mod h1:XUFfcA8bK96tsEHD1LZWptI5dGnOeUOu6P5RIplPgOk=
 github.com/LedgerParity/ledger-parity-core v0.0.0-20260911220853-bbd6fafcfe42 h1:+AKwkC5ribRlDWQSFmQ2b5xLttgRS7kgjITi0HI9zdk=
 github.com/LedgerParity/ledger-parity-core v0.0.0-20260911220853-bbd6fafcfe42/go.mod h1:eoscIrkPi93KKBENG83XwFFTSHlhYyeZkltIWdDCeaw=
+github.com/LedgerParity/ledger-parity-core v0.0.0-20260911221820-89aa1ec8246c h1:sQcduKwzsFRxNo74yf2X3LQfPnOPnjhj82HdOGvgWn0=
+github.com/LedgerParity/ledger-parity-core v0.0.0-20260911221820-89aa1ec8246c/go.mod h1:eoscIrkPi93KKBENG83XwFFTSHlhYyeZkltIWdDCeaw=
