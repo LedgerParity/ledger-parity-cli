@@ -1,0 +1,4 @@
+ID,Amount,StellarTransactionID,Status,Type,Disbursement.ID,Asset.Code,Asset.Issuer,Wallet.Name,Receiver.ID,Receiver.PhoneNumber,Receiver.Email,Receiver.ExternalID,ReceiverWallet.Address,ReceiverWallet.Status,CreatedAt,UpdatedAt,ExternalPaymentID,CircleTransactionID,CircleTransactionType
+matched,10,1111111111111111111111111111111111111111111111111111111111111111,SUCCESS,DIRECT,,XLM,,,,,private@example.invalid,,GDEMO_matched,,2026-09-01T09:00:00Z,2026-09-01T14:00:00Z,invoice-matched,,
+amount,10,2222222222222222222222222222222222222222222222222222222222222222,SUCCESS,DIRECT,,XLM,,,,,private@example.invalid,,GDEMO_amount,,2026-09-01T09:00:00Z,2026-09-01T14:00:00Z,invoice-amount,,
+ambiguous,10,3333333333333333333333333333333333333333333333333333333333333333,SUCCESS,DIRECT,,XLM,,,,,private@example.invalid,,GDEMO_ambiguous,,2026-09-01T09:00:00Z,2026-09-01T14:00:00Z,invoice-ambiguous,,

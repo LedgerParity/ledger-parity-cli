@@ -19,3 +19,12 @@ Core's initial public run list was empty. Actions permission inspection confirme
 Local race execution could not start because CGO was disabled and no C compiler was found. A portable compiler download was cancelled after very slow progress; the partial archive was removed. No compiler or global configuration was installed. Linux CI is configured to execute race tests; its results are separate from locally executed tests.
 
 Remaining limits: trusted-provider history/continuity, opaque address strings without StrKey validation, partial muxed account scope, no Soroban/path-payment/account-creation/merge semantics, no durable atomic checkpoint, unverified named-product export contracts, no real operator adoption/impact evidence. Contributor tasks and the roadmap describe bounded next steps. No Drips application or appeal was submitted.
+
+
+## 0.3.0-preview follow-up (2026-09-12)
+
+Local Go tests, vet and builds passed across all three modules. Connectors and CLI were also checked with GOWORK=off against published dependencies; CLI go mod verify passed. Core's separate Node corpus passed seven offline tests using locked SDK 17.0.1. The captured public-testnet response pair is dated 2026-09-11T23:02:34.348Z, transaction 6c84fa16503524baece6dbfea456834d5612db98593ecb896fe71488f2906cb7, operation 19880664878817281. This is provider-to-provider native-payment agreement, not independent application evidence or complete history. Batch/failure/event-gap cases are synthetic mutations.
+
+SDP mapping is tested against synthetic release-shaped CSV, not a deployed SDP export. Runtime RPC ingestion and operator adoption remain unverified. Remote CI for these revisions is recorded separately below when observed; earlier run links do not validate new changes.
+
+The standalone SDP binary demonstration and offline replay both exited 3 with (1 match, 1 discrepancy, 1 unknown); output reports were byte-identical. Core CI passed at 954f091 ([run](https://github.com/LedgerParity/ledger-parity-core/actions/runs/34657415249)), including the separate RPC corpus and both Linux Go race jobs. Connectors CI passed at b99a351 ([run](https://github.com/LedgerParity/ledger-parity-connectors/actions/runs/34657369946)). CLI follow-up CI is not yet claimed in this revision.

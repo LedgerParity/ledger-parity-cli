@@ -1,0 +1,67 @@
+{
+  "payments": [
+    {
+      "network": "Test SDF Network ; September 2015",
+      "operation_type": "payment",
+      "operation_id": "1",
+      "transaction_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "account": "GDEMO_SENDER",
+      "destination": "GDEMO_matched",
+      "amount": "10",
+      "asset_code": "XLM",
+      "asset_type": "native",
+      "timestamp": "2026-09-01T12:00:00Z",
+      "successful": true
+    },
+    {
+      "network": "Test SDF Network ; September 2015",
+      "operation_type": "payment",
+      "operation_id": "2",
+      "transaction_hash": "2222222222222222222222222222222222222222222222222222222222222222",
+      "account": "GDEMO_SENDER",
+      "destination": "GDEMO_amount",
+      "amount": "9",
+      "asset_code": "XLM",
+      "asset_type": "native",
+      "timestamp": "2026-09-01T12:00:00Z",
+      "successful": true
+    },
+    {
+      "network": "Test SDF Network ; September 2015",
+      "operation_type": "payment",
+      "operation_id": "3",
+      "transaction_hash": "3333333333333333333333333333333333333333333333333333333333333333",
+      "account": "GDEMO_SENDER",
+      "destination": "GDEMO_ambiguous",
+      "amount": "10",
+      "asset_code": "XLM",
+      "asset_type": "native",
+      "timestamp": "2026-09-01T12:00:00Z",
+      "successful": true
+    },
+    {
+      "network": "Test SDF Network ; September 2015",
+      "operation_type": "payment",
+      "operation_id": "4",
+      "transaction_hash": "3333333333333333333333333333333333333333333333333333333333333333",
+      "account": "GDEMO_SENDER",
+      "destination": "GDEMO_ambiguous",
+      "amount": "10",
+      "asset_code": "XLM",
+      "asset_type": "native",
+      "timestamp": "2026-09-01T12:00:00Z",
+      "successful": true
+    }
+  ],
+  "coverage": {
+    "network": "Test SDF Network ; September 2015",
+    "accounts": [
+      "GDEMO_SENDER"
+    ],
+    "start": "2026-09-01T11:00:00Z",
+    "end": "2026-09-01T13:00:00Z",
+    "complete": true,
+    "source": "synthetic",
+    "reason": "Synthetic offline test fixture"
+  }
+}

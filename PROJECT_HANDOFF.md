@@ -15,3 +15,8 @@ Read-only live testnet verification passed at 2026-09-11T22:14:14Z: operation 19
 Start review with docs/REVIEWER_WALKTHROUGH.md. docs/DRIPS_SUBMISSION_PREP.md is an unsent appeal draft based on current official sources and the user's recollection of relevance/impact concerns; exact rejection/application unavailable. Next product gate: a consenting operator's sanitized export and known discrepancy. No acceptance, partnership or measured impact claim.
 
 Remaining scope: trusted-provider history, no Soroban/path payments/account creation/merge settlement, no durable checkpoints, incomplete muxed account equivalence, no StrKey checksums, unverified named adapters and input-size/duplicate-JSON-key hardening. Contributor tasks are in docs/backlog.md. These are explicit limits, not completed production features.
+
+
+## Implementation update 2026-09-12
+
+Follow-up implementation: version 0.3.0-preview adds --bundle/--replay and target_app.format=sdp-csv. examples/sdp produces 1 match, 1 amount discrepancy and 1 unknown batch, exit 3; replay must reproduce the report. Inputs/evidence are bounded to 32 MiB with duplicate-key/depth validation for CLI JSON. Original raw files/config paths are not embedded. See docs/SDP_EVIDENCE.md. No real operator case, deployed SDP integration, production-readiness or Drips acceptance claim.

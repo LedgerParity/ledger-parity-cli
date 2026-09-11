@@ -7,3 +7,8 @@ The bundled demo is deterministic and entirely synthetic. The optional live-read
 Ambiguity reports now expose candidate operation IDs in JSON and terminal output. Go module pins reference published source revisions. CI covers the compatibility floor and stable Go; current remote execution is unverified. Archived exports are used for isolated build verification, without new project repositories.
 
 Verification amendment: remote CI at 1861a5f passed both Go matrix jobs, including the configured Linux race tests and offline demo. Core and connectors also have successful verified runs (docs/VERIFICATION.md). Prior unverified-CI statements are superseded; local Windows race execution remains distinct.
+
+
+## Implementation update 2026-09-12
+
+Evidence is an opt-in separate ledgerparity-evidence/v1 bundle, preserving ordinary report JSON compatibility. Replay is offline and fails on digest/report disagreement; hashes are not authentication. Capture creates new bundle paths only. Free-form metadata and memos are removed from CLI reports; SDP contacts are dropped. SDK/Go build provenance is recorded without local module replacement paths. SDP complete=true is rejected because filtered exports do not prove account-wide completeness.

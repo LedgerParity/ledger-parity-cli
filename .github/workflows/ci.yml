@@ -43,3 +43,16 @@ jobs:
           set -e
           test "$status" -eq 3
           python3 -c 'import json; r=json.load(open("report.json")); assert (r["total_matched"],r["total_discrepancies"],r["total_unknown"]) == (1,4,3)'
+      - name: SDP evidence and offline replay
+        shell: bash
+        run: |
+          set +e
+          ./ledger-parity --config examples/sdp/config.json --bundle evidence.json --out sdp-report.json
+          captured=$?
+          ./ledger-parity --replay evidence.json --out replayed-report.json
+          replayed=$?
+          set -e
+          test "$captured" -eq 3
+          test "$replayed" -eq 3
+          cmp sdp-report.json replayed-report.json
+          python3 -c 'import json; r=json.load(open("sdp-report.json")); assert (r["total_matched"],r["total_discrepancies"],r["total_unknown"]) == (1,1,1); assert not r["coverage"]["internal_complete"]'
