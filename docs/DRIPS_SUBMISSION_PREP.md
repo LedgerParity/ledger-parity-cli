@@ -10,7 +10,7 @@ Since the earlier version, we replaced floating-point comparisons with exact str
 
 This addresses the remembered relevance concern by making the Stellar payment-operator use case runnable and reviewable. We do not yet claim real operator adoption or measured ecosystem impact. The next validation step is an operator-provided sanitized export specification and a known discrepancy that they can reproduce independently. There is no signing, fund movement, token or custom contract.
 
-Evidence: the reviewer walkthrough, committed regression tests, pinned standalone modules, local verification handoffs and any explicitly recorded read-only testnet check. Offline fixtures and testnet-derived synthetic expectations are not production integration evidence. Remote CI must be checked independently; it is not inferred from a workflow file or local tests.
+Evidence: the reviewer walkthrough, committed regression tests, pinned standalone modules, local verification handoffs and any explicitly recorded read-only testnet check. Offline fixtures and testnet-derived synthetic expectations are not production integration evidence. Remote CI has been independently verified at the revisions in VERIFICATION.md; it is not inferred from local tests.
 
 ## Official rules versus project recommendations
 
@@ -20,4 +20,4 @@ The [public Stellar Wave page](https://www.drips.network/wave/stellar) displayed
 
 Engineering recommendations: lead with the runnable CLI workflow and core correctness changes; explain the three existing repository boundaries without treating them as a funding strategy; select real bounded tasks only after maintainer review capacity is confirmed. The full rejection text, original submission, rejection date, appeal history, signed-in allowances and contributor-review availability remain unavailable. Do not invent them in the final appeal.
 
-The recorded [read-only testnet result](LIVE_TESTNET_RESULT.json) passed at 2026-09-11T22:14:14Z. It is explicitly a synthetic expectation derived from provider data. Local tests/vet/build passed; remote CI is unverified and local race execution requires an unavailable C compiler. Keep these distinctions in any submitted appeal.
+The recorded [read-only testnet result](LIVE_TESTNET_RESULT.json) passed at 2026-09-11T22:14:14Z. It is explicitly a synthetic expectation derived from provider data. Local and isolated tests/vet/build passed. Remote CI, including the configured Linux race checks, passed at the revisions in [VERIFICATION.md](VERIFICATION.md); local Windows race execution requires an unavailable C compiler. Keep these distinctions in any submitted appeal.

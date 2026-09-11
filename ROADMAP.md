@@ -6,5 +6,6 @@ Next: operator-validated export/discrepancy and report provenance. See docs/back
 
 - [x] Canonical workflow, CLI negative tests, deterministic demo and read-only testnet evidence.
 - [x] Local test/vet/build and documented demo/config runs.
-- [ ] Remote CI confirmation/local race check (see handoff).
+- [x] Remote CI verified at the revisions linked in PROJECT_HANDOFF.md.
+- [ ] Optional local Windows race execution (no C compiler); Linux CI race tests passed.
 - [ ] Operator-validated practical impact; broader semantics remain deferred.
