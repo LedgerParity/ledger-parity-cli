@@ -6,6 +6,7 @@ import (
 	"github.com/LedgerParity/ledger-parity-core/pkg/types"
 	"io"
 	"os"
+	"strings"
 )
 
 type Formatter struct{ Out io.Writer }
@@ -24,6 +25,9 @@ func (f *Formatter) RenderTerminalTable(r *types.DiscrepancyReport) error {
 		return err
 	}
 	for _, v := range r.Results {
+		if len(v.CandidateOperationIDs) > 1 {
+			v.Notes += "; candidate operations: " + strings.Join(v.CandidateOperationIDs, ", ")
+		}
 		id := "-"
 		if v.InternalPayment != nil {
 			id = v.InternalPayment.ID
