@@ -1,0 +1,13 @@
+﻿# Project handoff
+
+2026-09-11. Baseline clean at 7ad01c9; baseline packages compiled but had no CLI/config/output tests. Implemented explicit deterministic demo, strict JSON config with working output overrides, canonical JSON/CSV pipeline, closed account/network/window scope, coverage-aware ingestion and nonzero error/discrepancy/unknown exits. Added end-to-end mock Horizon success/failure tests and config/output tests. Fixed JSON stdout '-' incorrectly resolving as a filename during testing.
+
+The deterministic demo expects 1 match, 4 discrepancies and 3 UNKNOWN results (exit 3). Duplicate input IDs intentionally suppress a definitive orphan finding. Dependencies are published Git revisions in go.mod/go.sum, not sibling replacements. Named product adapters are not used by CLI. scripts/Test-LiveRead.ps1 is optional and read-only; it synthesizes expected input from public testnet data and does not prove application adoption.
+
+Read docs/REVIEWER_WALKTHROUGH.md, docs/DRIPS_SUBMISSION_PREP.md and the core audit/decisions. Original rejection text/application absent; maintainer recalls relevance/impact concerns. No application submitted or approval promised. Local tests/build/live and remote CI results will be appended after final verification.
+
+Verification: local `go test ./...`, `go vet ./...` and binary build passed on Go 1.24.4. The canonical pipeline caught and fixed config '-' path resolution. Demo and config-mode expected outcome is exit 3, not a passing settlement verdict. A direct read-only live testnet check passed at 2026-09-11T22:14:14Z: operation 19878182387720193, one exact match, zero discrepancies/unknowns. See docs/LIVE_TESTNET_RESULT.json for source, transaction hash, coverage and synthetic-expectation limitations. This run used core bbd6faf and connectors 902fa78; final code additionally protects input aliases from output overwrite. No transactions were submitted.
+
+Removed old test_config.json/test_stellopay.json, which advertised the now-unsupported product routing and omitted required network/window identity. Use examples/config.json and embedded canonical fixtures instead.
+
+Remote GitHub Actions verification: the public core workflow existed and was active, but its runs endpoint initially returned total_count=0. A later API check was rate-limited. No remote successful CI is claimed. Local race tests could not start with CGO disabled/no C compiler; a portable compiler download was attempted and cancelled after very slow progress. It was not installed or added to PATH. Linux CI retains race checks.
