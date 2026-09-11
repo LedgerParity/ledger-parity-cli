@@ -1,4 +1,4 @@
-github.com/LedgerParity/ledger-parity-connectors v0.0.0-20260911220239-902fa7808860 h1:1W/tE2/KyFkgJs9WnFML7Kfu94di9utEiPXKhb7O/+w=
-github.com/LedgerParity/ledger-parity-connectors v0.0.0-20260911220239-902fa7808860/go.mod h1:XUFfcA8bK96tsEHD1LZWptI5dGnOeUOu6P5RIplPgOk=
-github.com/LedgerParity/ledger-parity-core v0.0.0-20260911221820-89aa1ec8246c h1:sQcduKwzsFRxNo74yf2X3LQfPnOPnjhj82HdOGvgWn0=
-github.com/LedgerParity/ledger-parity-core v0.0.0-20260911221820-89aa1ec8246c/go.mod h1:eoscIrkPi93KKBENG83XwFFTSHlhYyeZkltIWdDCeaw=
+github.com/LedgerParity/ledger-parity-connectors v0.0.0-20260911231527-b99a3514d63c h1:CLYrrG+ieTdPqicIu/+me3uxoXQgBNnEcGY9sTTDfx8=
+github.com/LedgerParity/ledger-parity-connectors v0.0.0-20260911231527-b99a3514d63c/go.mod h1:+4QCx3aPEash123eEwRpxX6ecGAnVMTixobjEa8IAfQ=
+github.com/LedgerParity/ledger-parity-core v0.0.0-20260911231514-954f0913e78d h1:3sCGrCD56pUc5cP3qTqsEwwMZZNgfrnkKthyIh1HvaY=
+github.com/LedgerParity/ledger-parity-core v0.0.0-20260911231514-954f0913e78d/go.mod h1:eoscIrkPi93KKBENG83XwFFTSHlhYyeZkltIWdDCeaw=

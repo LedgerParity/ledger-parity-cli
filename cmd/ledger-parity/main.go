@@ -1,26 +1,31 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/LedgerParity/ledger-parity-cli/examples"
 	"github.com/LedgerParity/ledger-parity-cli/pkg/config"
+	"github.com/LedgerParity/ledger-parity-cli/pkg/evidence"
 	"github.com/LedgerParity/ledger-parity-cli/pkg/output"
 	"github.com/LedgerParity/ledger-parity-connectors/pkg/connector"
 	"github.com/LedgerParity/ledger-parity-connectors/pkg/file"
+	"github.com/LedgerParity/ledger-parity-connectors/pkg/sdp"
 	"github.com/LedgerParity/ledger-parity-core/pkg/engine"
 	"github.com/LedgerParity/ledger-parity-core/pkg/ingest"
 	"github.com/LedgerParity/ledger-parity-core/pkg/types"
 	"io"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 )
 
-const Version = "0.2.0-preview"
+const Version = "0.3.0-preview"
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -36,6 +41,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	format := flags.String("format", "", "Override format: table, json, both")
 	out := flags.String("out", "", "Override JSON report path; - writes JSON to stdout")
 	demo := flags.Bool("demo", false, "Run deterministic offline fixtures")
+	bundlePath := flags.String("bundle", "", "Create a new replayable evidence file")
+	replayPath := flags.String("replay", "", "Verify and replay evidence offline; no configuration/network access")
 	version := flags.Bool("version", false, "Show version")
 	if err := flags.Parse(args); err != nil {
 		if err == flag.ErrHelp {
@@ -50,6 +57,29 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if *version {
 		fmt.Fprintln(stdout, Version)
 		return 0
+	}
+	if *replayPath != "" {
+		if *demo || *cfgPath != "" || *bundlePath != "" {
+			return fail(fmt.Errorf("replay cannot be combined with config, demo or bundle"))
+		}
+		b, err := evidence.Load(*replayPath)
+		if err != nil {
+			return fail(err)
+		}
+		r, err := evidence.Replay(b)
+		if err != nil {
+			return fail(err)
+		}
+		if *format == "" {
+			*format = "json"
+		}
+		if *out == "" {
+			*out = "-"
+		}
+		if *out != "-" && samePath(*out, *replayPath) {
+			return fail(fmt.Errorf("report must not overwrite evidence"))
+		}
+		return render(r, *format, *out, stdout, stderr)
 	}
 	if (*cfgPath == "") == (!*demo) {
 		return fail(fmt.Errorf("choose exactly one of --config or --demo"))
@@ -105,21 +135,55 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
-	report, err := reconcile(ctx, cfg)
+	if *bundlePath != "" && samePath(*bundlePath, cfg.Output.FilePath) {
+		return fail(fmt.Errorf("bundle and report paths must differ"))
+	}
+	var captured evidence.Data
+	report, err := reconcileCapture(ctx, cfg, &captured)
 	if err != nil {
 		return fail(err)
 	}
 	if *demo {
 		report.GeneratedAt = cfg.Reconciliation.End
 	}
+	if *bundlePath != "" {
+		b, err := evidence.Seal(captured)
+		if err != nil {
+			return fail(err)
+		}
+		if err = evidence.Write(*bundlePath, b); err != nil {
+			return fail(err)
+		}
+		if samePath(*bundlePath, cfg.Output.FilePath) {
+			return fail(fmt.Errorf("report resolves to evidence file; refusing overwrite"))
+		}
+	}
+	return render(report, cfg.Output.Format, cfg.Output.FilePath, stdout, stderr)
+}
+
+func samePath(a, b string) bool {
+	x, _ := filepath.Abs(a)
+	y, _ := filepath.Abs(b)
+	xi, xe := os.Stat(x)
+	yi, ye := os.Stat(y)
+	return x == y || (runtime.GOOS == "windows" && strings.EqualFold(x, y)) || (xe == nil && ye == nil && os.SameFile(xi, yi))
+}
+func render(report *types.DiscrepancyReport, format, path string, stdout, stderr io.Writer) int {
+	fail := func(err error) int { fmt.Fprintln(stderr, err); return 1 }
+	if format != "table" && format != "json" && format != "both" {
+		return fail(fmt.Errorf("invalid output format"))
+	}
+	if format == "both" && path == "-" {
+		return fail(fmt.Errorf("use json format for stdout"))
+	}
 	f := output.NewFormatter(stdout)
-	if cfg.Output.Format == "table" || cfg.Output.Format == "both" {
-		if err = f.RenderTerminalTable(report); err != nil {
+	if format == "table" || format == "both" {
+		if err := f.RenderTerminalTable(report); err != nil {
 			return fail(err)
 		}
 	}
-	if cfg.Output.Format == "json" || cfg.Output.Format == "both" {
-		if err = f.ExportJSON(report, cfg.Output.FilePath); err != nil {
+	if format == "json" || format == "both" {
+		if err := f.ExportJSON(report, path); err != nil {
 			return fail(err)
 		}
 	}
@@ -132,10 +196,34 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 func reconcile(ctx context.Context, cfg *config.Config) (*types.DiscrepancyReport, error) {
+	return reconcileCapture(ctx, cfg, &evidence.Data{})
+}
+func reconcileCapture(ctx context.Context, cfg *config.Config, captured *evidence.Data) (*types.DiscrepancyReport, error) {
 	start, end := cfg.Reconciliation.Start, cfg.Reconciliation.End
-	ips, err := file.NewFileConnector(cfg.TargetApp.SourcePath, cfg.TargetApp.Format, cfg.TargetApp.Name).FetchInternalPayments(ctx, connector.Filter{TimeStart: start, TimeEnd: end})
+	input, err := evidence.ReadBytes(cfg.TargetApp.SourcePath)
 	if err != nil {
 		return nil, err
+	}
+	captured.SourceHashes = map[string]string{"internal": evidence.Hash(input)}
+	var ips []types.InternalPayment
+	if cfg.TargetApp.Format == "sdp-csv" {
+		ips, err = sdp.Parse(bytes.NewReader(input), cfg.Stellar.Network, cfg.TargetApp.Name, *cfg.TargetApp.SDP)
+		captured.Assertions = map[string]string{"sdp_release": sdp.Release, "sdp_revision": sdp.Revision, "scope": cfg.TargetApp.SDP.Assertion}
+	} else {
+		if cfg.TargetApp.Format == "json" {
+			var checked []types.InternalPayment
+			if err = evidence.Decode(input, &checked); err != nil {
+				return nil, err
+			}
+		}
+		ips, err = file.NewFileConnector(cfg.TargetApp.SourcePath, cfg.TargetApp.Format, cfg.TargetApp.Name).Parse(ctx, bytes.NewReader(input), connector.Filter{TimeStart: start, TimeEnd: end})
+	}
+	if err != nil {
+		return nil, err
+	}
+	// Free-form metadata is not needed by matching and can contain secrets/PII.
+	for i := range ips {
+		ips[i].Metadata = nil
 	}
 	for _, p := range ips {
 		if p.Network != cfg.Stellar.Network {
@@ -153,19 +241,13 @@ func reconcile(ctx context.Context, cfg *config.Config) (*types.DiscrepancyRepor
 	}
 	var observed ingest.FetchResult
 	if cfg.Stellar.OnChainPath != "" {
-		f, err := os.Open(cfg.Stellar.OnChainPath)
+		raw, err := evidence.ReadBytes(cfg.Stellar.OnChainPath)
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
-		dec := json.NewDecoder(f)
-		dec.DisallowUnknownFields()
-		if err = dec.Decode(&observed); err != nil {
+		captured.SourceHashes["observations"] = evidence.Hash(raw)
+		if err = evidence.Decode(raw, &observed); err != nil {
 			return nil, err
-		}
-		var extra any
-		if dec.Decode(&extra) != io.EOF {
-			return nil, fmt.Errorf("expected one offline observation object")
 		}
 		if observed.Payments == nil {
 			return nil, fmt.Errorf("payments must be an array")
@@ -194,9 +276,13 @@ func reconcile(ctx context.Context, cfg *config.Config) (*types.DiscrepancyRepor
 		if err != nil {
 			return nil, fmt.Errorf("ingestion failed; no report produced: %w", err)
 		}
+		// Keep provider identity without URL credentials, query keys or private paths.
+		u, _ := url.Parse(cfg.Stellar.HorizonURL)
+		observed.Coverage.Source = "horizon:" + u.Host
 	}
 	scoped := []types.OnChainPayment{}
 	for _, p := range observed.Payments {
+		p.Memo = ""
 		if err = types.ValidateOnChain(p); err != nil {
 			return nil, err
 		}
@@ -216,5 +302,15 @@ func reconcile(ctx context.Context, cfg *config.Config) (*types.DiscrepancyRepor
 	observed.Coverage.Accounts = cfg.Stellar.Accounts
 	observed.Coverage.InternalComplete = cfg.TargetApp.Complete
 	opts := engine.ReconcileOptions{TimeframeToleranceSec: cfg.Reconciliation.TimeframeToleranceSec, Coverage: observed.Coverage}
-	return engine.NewReconciler(opts).Reconcile(cfg.TargetApp.Name, start, end, ips, scoped), nil
+	report := engine.NewReconciler(opts).Reconcile(cfg.TargetApp.Name, start, end, ips, scoped)
+	captured.Tool = Version
+	captured.Build = evidence.BuildInfo()
+	captured.App = cfg.TargetApp.Name
+	captured.Start = start
+	captured.End = end
+	captured.Options = opts
+	captured.Internal = ips
+	captured.Observations = scoped
+	captured.Report = report
+	return report, nil
 }

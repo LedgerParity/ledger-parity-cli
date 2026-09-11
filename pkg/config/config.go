@@ -1,19 +1,19 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
+	"github.com/LedgerParity/ledger-parity-cli/pkg/evidence"
+	"github.com/LedgerParity/ledger-parity-connectors/pkg/sdp"
 	"path/filepath"
 	"time"
 )
 
 type TargetAppConfig struct {
-	Name       string `json:"name"`
-	Format     string `json:"format"`
-	SourcePath string `json:"source_path"`
-	Complete   bool   `json:"complete"`
+	SDP        *sdp.Scope `json:"sdp,omitempty"`
+	Name       string     `json:"name"`
+	Format     string     `json:"format"`
+	SourcePath string     `json:"source_path"`
+	Complete   bool       `json:"complete"`
 }
 type StellarConfig struct {
 	HorizonURL  string   `json:"horizon_url"`
@@ -44,20 +44,13 @@ func LoadConfig(path string) (*Config, error) {
 	if filepath.Ext(path) != ".json" {
 		return nil, fmt.Errorf("configuration must be a .json file; YAML is unsupported")
 	}
-	f, err := os.Open(path)
+	raw, err := evidence.ReadBytes(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 	cfg := DefaultConfig()
-	dec := json.NewDecoder(f)
-	dec.DisallowUnknownFields()
-	if err = dec.Decode(&cfg); err != nil {
+	if err = evidence.Decode(raw, &cfg); err != nil {
 		return nil, err
-	}
-	var extra any
-	if dec.Decode(&extra) != io.EOF {
-		return nil, fmt.Errorf("expected one JSON configuration object")
 	}
 	if err = cfg.Validate(); err != nil {
 		return nil, err
@@ -75,8 +68,34 @@ func LoadConfig(path string) (*Config, error) {
 	return &cfg, nil
 }
 func (c *Config) Validate() error {
-	if c.TargetApp.SourcePath == "" || c.TargetApp.Name == "" || (c.TargetApp.Format != "json" && c.TargetApp.Format != "csv") {
-		return fmt.Errorf("target_app needs name, source_path and json/csv format")
+	if c.TargetApp.SourcePath == "" || c.TargetApp.Name == "" || (c.TargetApp.Format != "json" && c.TargetApp.Format != "csv" && c.TargetApp.Format != "sdp-csv") {
+		return fmt.Errorf("target_app needs name, source_path and json/csv/sdp-csv format")
+	}
+	if c.TargetApp.Format == "sdp-csv" {
+		if c.TargetApp.SDP == nil {
+			return fmt.Errorf("sdp-csv requires explicit sdp scope")
+		}
+		if err := c.TargetApp.SDP.Validate(); err != nil {
+			return err
+		}
+		if c.TargetApp.Complete {
+			return fmt.Errorf("SDP exports cannot assert account-wide completeness in this adapter")
+		}
+		s := c.TargetApp.SDP
+		if s.SettlementStart.Before(c.Reconciliation.Start) || s.SettlementEnd.After(c.Reconciliation.End) {
+			return fmt.Errorf("SDP interval must fit reconciliation window")
+		}
+		found := false
+		for _, a := range c.Stellar.Accounts {
+			if a == s.Sender {
+				found = true
+			}
+		}
+		if !found {
+			return fmt.Errorf("SDP sender must be monitored")
+		}
+	} else if c.TargetApp.SDP != nil {
+		return fmt.Errorf("sdp scope only valid for sdp-csv")
 	}
 	if c.Stellar.Network == "" || len(c.Stellar.Accounts) == 0 {
 		return fmt.Errorf("stellar network passphrase and monitored accounts required")

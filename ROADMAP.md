@@ -9,3 +9,8 @@ Next: operator-validated export/discrepancy and report provenance. See docs/back
 - [x] Remote CI verified at the revisions linked in PROJECT_HANDOFF.md.
 - [ ] Optional local Windows race execution (no C compiler); Linux CI race tests passed.
 - [ ] Operator-validated practical impact; broader semantics remain deferred.
+
+
+## Implementation update 2026-09-12
+
+Implemented follow-up: scoped SDP CSV configuration, versioned evidence bundles with exact source-byte hashes and offline replay, strict bounded CLI JSON and synthetic end-to-end SDP example. Next: consenting operator validation; authenticated provenance or durable checkpointing need separate designs. Runtime RPC ingestion remains gated in core.
