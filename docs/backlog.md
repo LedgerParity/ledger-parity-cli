@@ -6,3 +6,8 @@
 4. Large exports and duplicate JSON keys: coordinate a bounded shared decoder with connectors. Acceptance: duplicate field names and oversized inputs fail with actionable errors while exact decimal strings survive. Avoid silently changing configured scope.
 
 Maintainer must confirm availability before assignment. A PR needs reproduction, source evidence where relevant, tests and scope limits. No Wave issue labels, points or response-time promises are implied.
+
+
+## Implementation update 2026-09-12
+
+Completed follow-up: report provenance/evidence replay and bounded CLI duplicate-key handling. Next: a consenting operator validation case, streaming larger inputs without weakening integrity, and cross-version replay migration fixtures. Shared connector-library limits remain a separate task; do not infer that CLI limits apply to all library callers.
