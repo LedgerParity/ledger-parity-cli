@@ -20,3 +20,5 @@ Remaining scope: trusted-provider history, no Soroban/path payments/account crea
 ## Implementation update 2026-09-12
 
 Follow-up implementation: version 0.3.0-preview adds --bundle/--replay and target_app.format=sdp-csv. examples/sdp produces 1 match, 1 amount discrepancy and 1 unknown batch, exit 3; replay must reproduce the report. Inputs/evidence are bounded to 32 MiB with duplicate-key/depth validation for CLI JSON. Original raw files/config paths are not embedded. See docs/SDP_EVIDENCE.md. No real operator case, deployed SDP integration, production-readiness or Drips acceptance claim.
+
+Verification completed: standalone published-dependency checks and byte-identical SDP evidence replay passed. Core 954f091, connectors b99a351 and CLI 1c6a32b remote CI succeeded; exact links and evidence distinctions are recorded in docs/VERIFICATION.md. The final verification-note commit is documentation only. Real operator validation and runtime RPC ingestion remain outstanding.
