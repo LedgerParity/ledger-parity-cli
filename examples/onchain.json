@@ -1,0 +1,82 @@
+{
+  "payments": [
+    {
+      "network": "Test SDF Network ; September 2015",
+      "operation_type": "payment",
+      "operation_id": "1",
+      "transaction_hash": "synthetic-tx-1",
+      "account": "GDEMO_SENDER",
+      "destination": "GDEMO_MATCHED",
+      "amount": "100.0000000",
+      "asset_code": "XLM",
+      "asset_type": "native",
+      "timestamp": "2026-09-01T12:00:00Z",
+      "successful": true
+    },
+    {
+      "network": "Test SDF Network ; September 2015",
+      "operation_type": "payment",
+      "operation_id": "2",
+      "transaction_hash": "synthetic-tx-2",
+      "account": "GDEMO_SENDER",
+      "destination": "GDEMO_AMOUNT_MISMATCH",
+      "amount": "10",
+      "asset_code": "XLM",
+      "asset_type": "native",
+      "timestamp": "2026-09-01T12:00:00Z",
+      "successful": true
+    },
+    {
+      "network": "Test SDF Network ; September 2015",
+      "operation_type": "payment",
+      "operation_id": "3",
+      "transaction_hash": "synthetic-batch",
+      "account": "GDEMO_SENDER",
+      "destination": "GDEMO_AMBIGUOUS",
+      "amount": "1",
+      "asset_code": "XLM",
+      "asset_type": "native",
+      "timestamp": "2026-09-01T12:00:00Z",
+      "successful": true
+    },
+    {
+      "network": "Test SDF Network ; September 2015",
+      "operation_type": "payment",
+      "operation_id": "4",
+      "transaction_hash": "synthetic-batch",
+      "account": "GDEMO_SENDER",
+      "destination": "GDEMO_AMBIGUOUS",
+      "amount": "1",
+      "asset_code": "XLM",
+      "asset_type": "native",
+      "timestamp": "2026-09-01T12:00:00Z",
+      "successful": true
+    },
+    {
+      "network": "Test SDF Network ; September 2015",
+      "operation_type": "payment",
+      "operation_id": "5",
+      "transaction_hash": "synthetic-tx-5",
+      "account": "GDEMO_SENDER",
+      "destination": "GDEMO_UNCLAIMED",
+      "amount": "999",
+      "asset_code": "XLM",
+      "asset_type": "native",
+      "timestamp": "2026-09-01T12:00:00Z",
+      "successful": true
+    }
+  ],
+  "coverage": {
+    "network": "Test SDF Network ; September 2015",
+    "accounts": [
+      "GDEMO_SENDER"
+    ],
+    "start": "2026-09-01T10:00:00Z",
+    "end": "2026-09-01T14:00:00Z",
+    "complete": true,
+    "internal_complete": false,
+    "source": "offline-synthetic-fixture",
+    "reason": "Synthetic complete ordinary-payment dataset; no live ledger verification",
+    "pages": 0
+  }
+}

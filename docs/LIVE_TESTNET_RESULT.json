@@ -1,0 +1,26 @@
+{
+    "unknown":  0,
+    "operation_id":  "19878182387720193",
+    "coverage":  {
+                     "network":  "Test SDF Network ; September 2015",
+                     "accounts":  [
+                                      "GAC35UVYN2ZR6A6PZZAPMGAKWWOCI6O7HGWHYS4HGREUIT6SW5K2UKF3"
+                                  ],
+                     "start":  "2026-09-11T22:13:56Z",
+                     "end":  "2026-09-11T22:13:57Z",
+                     "complete":  true,
+                     "internal_complete":  false,
+                     "reason":  "Ordinary payments scanned within provider-declared retained history; provider continuity trusted",
+                     "source":  "https://horizon-testnet.stellar.org",
+                     "pages":  1
+                 },
+    "method":  "GET latest public testnet payments; synthesize one expected row; independently refetch account payments through CLI and compare exact operation identity/amount/asset/direction",
+    "matched":  1,
+    "observed_at":  "2026-09-11T22:14:14.5915642+00:00",
+    "limitations":  "Read-only provider observation. Expected application data derived from that observation; not an independent business record, customer integration, transaction submission or production-readiness proof. Testnet can reset.",
+    "payment_timestamp":  "2026-09-11T22:13:57Z",
+    "transaction_hash":  "f1c27bd10d96221189aad1cdde6ba21642a54aa65f53fcaa6a265f80566bf640",
+    "network":  "Test SDF Network ; September 2015",
+    "endpoint":  "https://horizon-testnet.stellar.org",
+    "discrepancies":  0
+}

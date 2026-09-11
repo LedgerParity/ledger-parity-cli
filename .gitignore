@@ -10,3 +10,6 @@
 discrepancy_report.json
 test_report.json
 *.db
+.local-checks/
+/examples/report.json
+/examples/-

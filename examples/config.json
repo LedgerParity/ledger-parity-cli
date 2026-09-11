@@ -1,0 +1,24 @@
+{
+  "target_app": {
+    "name": "synthetic-payroll",
+    "format": "json",
+    "source_path": "internal.json",
+    "complete": true
+  },
+  "stellar": {
+    "network": "Test SDF Network ; September 2015",
+    "accounts": [
+      "GDEMO_SENDER"
+    ],
+    "on_chain_path": "onchain.json"
+  },
+  "reconciliation": {
+    "start": "2026-09-01T11:00:00Z",
+    "end": "2026-09-01T13:00:00Z",
+    "timeframe_tolerance_sec": 600
+  },
+  "output": {
+    "format": "table",
+    "file_path": "report.json"
+  }
+}

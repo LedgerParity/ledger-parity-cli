@@ -1,0 +1,10 @@
+﻿# Reviewer walkthrough
+
+1. Clone this repository alone, run `go test ./...`, `go vet ./...`, then build `./cmd/ledger-parity`. Dependencies come from pinned Go modules, without sibling replacements.
+2. Run `ledger-parity --demo --format json --out -` (use `./` on Unix or `.\` on PowerShell). Expect exit 3, 1 match, 4 discrepancies and 3 unknowns. The bundle runs through canonical input parsing and the same reconciliation/output pipeline as configuration mode. All data is synthetic and offline.
+3. Inspect amount-mismatch's exact `amount_delta`; inspect missing's coverage bounds; inspect ambiguous's operation-ID advice. Duplicate IDs prevent definitive orphan classification. UNKNOWN is counted separately from discrepancies.
+4. Read `TestEndToEndHorizonPayment` and `TestHorizonFailureDoesNotCreateMissingReport`: an HTTP test server exercises the real ingestor through the CLI. Core adds >200-record pagination, later-page errors, failed operations, conflicting duplicates, issuer/direction/network and precision tests.
+5. Optionally run scripts/Test-LiveRead.ps1 after a Windows build. It reads public testnet data, derives a synthetic expectation and refetches through the account ingestor. This demonstrates real API interoperability only. See the recorded live evidence if present; testnet can reset.
+6. Review the [core gap assessment](https://github.com/LedgerParity/ledger-parity-core/blob/main/docs/GAP_ASSESSMENT.md), [connector provenance](https://github.com/LedgerParity/ledger-parity-connectors/blob/main/docs/PROVENANCE.md), local [backlog](backlog.md) and [appeal draft](DRIPS_SUBMISSION_PREP.md). Verify current GitHub CI runs separately; local checks are not remote CI.
+
+The Stellar contribution is practical reconciliation of classic payment expectations against operation-level settlement evidence, preserving exact asset and network semantics and unresolved coverage. It does not require a new contract. Evidence of real operator adoption, quantified impact, Soroban coverage and production readiness is not yet available.

@@ -3,91 +3,101 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
-	"strings"
+	"time"
 )
 
-// TargetAppConfig defines internal payment source details.
 type TargetAppConfig struct {
-	Name       string `json:"name" yaml:"name"`                 // e.g. "stellopay", "facilpay", "file"
-	Format     string `json:"format" yaml:"format"`             // "json" or "csv"
-	SourcePath string `json:"source_path" yaml:"source_path"` // Path to export file or DB connection
+	Name       string `json:"name"`
+	Format     string `json:"format"`
+	SourcePath string `json:"source_path"`
+	Complete   bool   `json:"complete"`
 }
-
-// StellarConfig defines Horizon / Soroban RPC connection settings.
 type StellarConfig struct {
-	HorizonURL string   `json:"horizon_url" yaml:"horizon_url"`
-	Accounts   []string `json:"accounts" yaml:"accounts"`
+	HorizonURL  string   `json:"horizon_url"`
+	Network     string   `json:"network"`
+	Accounts    []string `json:"accounts"`
+	OnChainPath string   `json:"on_chain_path"`
 }
-
-// ReconciliationConfig defines tolerance parameters.
 type ReconciliationConfig struct {
-	TimeframeToleranceSec int64 `json:"timeframe_tolerance_sec" yaml:"timeframe_tolerance_sec"`
-	IgnoreFailedOnChain   bool  `json:"ignore_failed_on_chain" yaml:"ignore_failed_on_chain"`
+	TimeframeToleranceSec int64     `json:"timeframe_tolerance_sec"`
+	Start                 time.Time `json:"start"`
+	End                   time.Time `json:"end"`
 }
-
-// OutputConfig defines report formatting & destination.
 type OutputConfig struct {
-	Format   string `json:"format" yaml:"format"`       // "table", "json", "both"
-	FilePath string `json:"file_path" yaml:"file_path"` // Export JSON report path
+	Format   string `json:"format"`
+	FilePath string `json:"file_path"`
 }
-
-// Config represents the complete CLI configuration.
 type Config struct {
-	TargetApp      TargetAppConfig      `json:"target_app" yaml:"target_app"`
-	Stellar        StellarConfig        `json:"stellar" yaml:"stellar"`
-	Reconciliation ReconciliationConfig `json:"reconciliation" yaml:"reconciliation"`
-	Output         OutputConfig         `json:"output" yaml:"output"`
+	TargetApp      TargetAppConfig      `json:"target_app"`
+	Stellar        StellarConfig        `json:"stellar"`
+	Reconciliation ReconciliationConfig `json:"reconciliation"`
+	Output         OutputConfig         `json:"output"`
 }
 
-// DefaultConfig returns default runtime configuration.
 func DefaultConfig() Config {
-	return Config{
-		TargetApp: TargetAppConfig{
-			Name:       "stellopay",
-			Format:     "json",
-			SourcePath: "stellopay_export.json",
-		},
-		Stellar: StellarConfig{
-			HorizonURL: "https://horizon-testnet.stellar.org",
-			Accounts:   []string{},
-		},
-		Reconciliation: ReconciliationConfig{
-			TimeframeToleranceSec: 600,
-			IgnoreFailedOnChain:   true,
-		},
-		Output: OutputConfig{
-			Format:   "table",
-			FilePath: "discrepancy_report.json",
-		},
-	}
+	return Config{TargetApp: TargetAppConfig{Name: "file", Format: "json"}, Reconciliation: ReconciliationConfig{TimeframeToleranceSec: 600}, Output: OutputConfig{Format: "table", FilePath: "discrepancy_report.json"}}
 }
-
-// LoadConfig reads configuration from a JSON or YAML file.
-func LoadConfig(configPath string) (*Config, error) {
-	cfg := DefaultConfig()
-
-	if configPath == "" {
-		return &cfg, nil
+func LoadConfig(path string) (*Config, error) {
+	if filepath.Ext(path) != ".json" {
+		return nil, fmt.Errorf("configuration must be a .json file; YAML is unsupported")
 	}
-
-	data, err := os.ReadFile(configPath)
+	f, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
+		return nil, err
 	}
-
-	ext := strings.ToLower(filepath.Ext(configPath))
-	if ext == ".json" || ext == "" {
-		if err := json.Unmarshal(data, &cfg); err != nil {
-			return nil, fmt.Errorf("failed parsing json config: %w", err)
-		}
-	} else {
-		// Basic key-value / json fallback for zero external dependency
-		if err := json.Unmarshal(data, &cfg); err != nil {
-			return nil, fmt.Errorf("failed parsing config: %w", err)
-		}
+	defer f.Close()
+	cfg := DefaultConfig()
+	dec := json.NewDecoder(f)
+	dec.DisallowUnknownFields()
+	if err = dec.Decode(&cfg); err != nil {
+		return nil, err
 	}
-
+	var extra any
+	if dec.Decode(&extra) != io.EOF {
+		return nil, fmt.Errorf("expected one JSON configuration object")
+	}
+	if err = cfg.Validate(); err != nil {
+		return nil, err
+	}
+	base := filepath.Dir(path)
+	resolve := func(p string) string {
+		if p != "" && p != "-" && !filepath.IsAbs(p) {
+			return filepath.Join(base, p)
+		}
+		return p
+	}
+	cfg.TargetApp.SourcePath = resolve(cfg.TargetApp.SourcePath)
+	cfg.Stellar.OnChainPath = resolve(cfg.Stellar.OnChainPath)
+	cfg.Output.FilePath = resolve(cfg.Output.FilePath)
 	return &cfg, nil
+}
+func (c *Config) Validate() error {
+	if c.TargetApp.SourcePath == "" || c.TargetApp.Name == "" || (c.TargetApp.Format != "json" && c.TargetApp.Format != "csv") {
+		return fmt.Errorf("target_app needs name, source_path and json/csv format")
+	}
+	if c.Stellar.Network == "" || len(c.Stellar.Accounts) == 0 {
+		return fmt.Errorf("stellar network passphrase and monitored accounts required")
+	}
+	for _, a := range c.Stellar.Accounts {
+		if a == "" {
+			return fmt.Errorf("empty monitored account")
+		}
+	}
+	if (c.Stellar.HorizonURL == "") == (c.Stellar.OnChainPath == "") {
+		return fmt.Errorf("choose exactly one of horizon_url or on_chain_path")
+	}
+	r := c.Reconciliation
+	if r.Start.IsZero() || r.End.IsZero() || r.End.Before(r.Start) || r.TimeframeToleranceSec < 0 || r.TimeframeToleranceSec > 86400 {
+		return fmt.Errorf("ordered start/end and tolerance 0..86400 seconds required")
+	}
+	if c.Output.Format != "table" && c.Output.Format != "json" && c.Output.Format != "both" {
+		return fmt.Errorf("format must be table, json or both")
+	}
+	if c.Output.Format != "table" && c.Output.FilePath == "" {
+		return fmt.Errorf("JSON output path required")
+	}
+	return nil
 }
