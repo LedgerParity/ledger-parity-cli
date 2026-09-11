@@ -2,195 +2,219 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"os"
-	"time"
-
+	"github.com/LedgerParity/ledger-parity-cli/examples"
 	"github.com/LedgerParity/ledger-parity-cli/pkg/config"
 	"github.com/LedgerParity/ledger-parity-cli/pkg/output"
 	"github.com/LedgerParity/ledger-parity-connectors/pkg/connector"
 	"github.com/LedgerParity/ledger-parity-connectors/pkg/file"
-	"github.com/LedgerParity/ledger-parity-connectors/pkg/stellopay"
 	"github.com/LedgerParity/ledger-parity-core/pkg/engine"
 	"github.com/LedgerParity/ledger-parity-core/pkg/ingest"
 	"github.com/LedgerParity/ledger-parity-core/pkg/types"
+	"io"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"time"
 )
 
-const Version = "1.0.0"
+const Version = "0.2.0-preview"
 
 func main() {
-	configPath := flag.String("config", "", "Path to YAML/JSON configuration file")
-	outputFormat := flag.String("format", "table", "Output format: table, json, or both")
-	outputPath := flag.String("out", "discrepancy_report.json", "Output file path for JSON report")
-	demoMode := flag.Bool("demo", false, "Run standalone demonstration with seeded test vectors")
-	showVersion := flag.Bool("version", false, "Show LedgerParity version")
-	flag.Parse()
-
-	if *showVersion {
-		fmt.Printf("LedgerParity CLI v%s — Stellar Payment Reconciliation Service\n", Version)
-		os.Exit(0)
-	}
-
-	fmt.Println("🔍 LedgerParity Payment Reconciliation Engine v" + Version)
-
-	if *demoMode || *configPath == "" {
-		fmt.Println("ℹ️  Running in standalone demonstration mode (seeded discrepancy test vectors)...")
-		runDemo(*outputFormat, *outputPath)
-		return
-	}
-
-	cfg, err := config.LoadConfig(*configPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error loading configuration: %v\n", err)
-		os.Exit(1)
-	}
-
-	runReconciliation(cfg, *outputFormat, *outputPath)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+	os.Exit(run(ctx, os.Args[1:], os.Stdout, os.Stderr))
 }
 
-func runDemo(outputFormat, outputPath string) {
-	now := time.Now()
-	windowStart := now.Add(-24 * time.Hour)
-	windowEnd := now
-
-	// Seeded Internal Payments (Target App: Stellopay)
-	internals := []types.InternalPayment{
-		{
-			ID:          "stell_101",
-			SourceApp:   "stellopay",
-			ReferenceID: "tx_hash_001",
-			Sender:      "GEMPLOYER1111111111111111111111111111111111111111111",
-			Recipient:   "GEMPLOYEE2222222222222222222222222222222222222222222",
-			Amount:      "150.0000000",
-			Asset:       "XLM",
-			Timestamp:   now.Add(-10 * time.Minute),
-			Status:      "COMPLETED",
-		},
-		{
-			ID:          "stell_102",
-			SourceApp:   "stellopay",
-			ReferenceID: "tx_hash_002",
-			Sender:      "GEMPLOYER1111111111111111111111111111111111111111111",
-			Recipient:   "GEMPLOYEE3333333333333333333333333333333333333333333",
-			Amount:      "300.0000000",
-			Asset:       "USDC",
-			Timestamp:   now.Add(-30 * time.Minute),
-			Status:      "COMPLETED",
-		},
-		{
-			ID:          "stell_103",
-			SourceApp:   "stellopay",
-			Sender:      "GEMPLOYER1111111111111111111111111111111111111111111",
-			Recipient:   "GEMPLOYEE4444444444444444444444444444444444444444444",
-			Amount:      "500.0000000",
-			Asset:       "XLM",
-			Timestamp:   now.Add(-5 * time.Minute),
-			Status:      "PENDING_SETTLEMENT", // Missing on-chain settlement
-		},
-		{
-			ID:          "stell_104_dup",
-			SourceApp:   "stellopay",
-			Sender:      "GEMPLOYER1111111111111111111111111111111111111111111",
-			Recipient:   "GEMPLOYEE2222222222222222222222222222222222222222222",
-			Amount:      "150.0000000",
-			Asset:       "XLM",
-			Timestamp:   now.Add(-10 * time.Minute),
-			Status:      "COMPLETED", // Duplicate internal record
-		},
+// Exit 0: complete match; 1: runtime/config error; 2: discrepancies; 3: unresolved evidence.
+func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("ledger-parity", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	cfgPath := flags.String("config", "", "JSON configuration file")
+	format := flags.String("format", "", "Override format: table, json, both")
+	out := flags.String("out", "", "Override JSON report path; - writes JSON to stdout")
+	demo := flags.Bool("demo", false, "Run deterministic offline fixtures")
+	version := flags.Bool("version", false, "Show version")
+	if err := flags.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return 0
+		}
+		return 1
 	}
-
-	// Seeded On-Chain Stellar Payments
-	onChains := []types.OnChainPayment{
-		{
-			TransactionHash: "tx_hash_001",
-			OperationID:     "op_9001",
-			Account:         "GEMPLOYER1111111111111111111111111111111111111111111",
-			Destination:     "GEMPLOYEE2222222222222222222222222222222222222222222",
-			Amount:          "150.0000000",
-			AssetCode:       "XLM",
-			Timestamp:       now.Add(-10 * time.Minute),
-			Successful:      true,
-		},
-		{
-			TransactionHash: "tx_hash_002",
-			OperationID:     "op_9002",
-			Account:         "GEMPLOYER1111111111111111111111111111111111111111111",
-			Destination:     "GEMPLOYEE3333333333333333333333333333333333333333333",
-			Amount:          "250.0000000", // Amount mismatch (Internal expected 300, on-chain settled 250)
-			AssetCode:       "USDC",
-			Timestamp:       now.Add(-30 * time.Minute),
-			Successful:      true,
-		},
-		{
-			TransactionHash: "tx_hash_orphan_99",
-			OperationID:     "op_9099",
-			Account:         "GUNKNOWN9999999999999999999999999999999999999999999",
-			Destination:     "GEMPLOYEE2222222222222222222222222222222222222222222",
-			Amount:          "1000.0000000",
-			AssetCode:       "XLM",
-			Timestamp:       now.Add(-1 * time.Hour),
-			Successful:      true, // Orphaned on-chain payment
-		},
+	fail := func(err error) int { fmt.Fprintln(stderr, err); return 1 }
+	if flags.NArg() != 0 {
+		return fail(fmt.Errorf("unexpected positional arguments"))
 	}
-
-	rec := engine.NewReconciler()
-	report := rec.Reconcile("stellopay_demo", windowStart, windowEnd, internals, onChains)
-
-	fmtter := output.NewFormatter(os.Stdout)
-	if outputFormat == "table" || outputFormat == "both" {
-		fmtter.RenderTerminalTable(report)
+	if *version {
+		fmt.Fprintln(stdout, Version)
+		return 0
 	}
-
-	if outputFormat == "json" || outputFormat == "both" {
-		if err := fmtter.ExportJSON(report, outputPath); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Error exporting JSON: %v\n", err)
+	if (*cfgPath == "") == (!*demo) {
+		return fail(fmt.Errorf("choose exactly one of --config or --demo"))
+	}
+	if *demo {
+		dir, err := os.MkdirTemp("", "ledger-parity-demo-")
+		if err != nil {
+			return fail(err)
+		}
+		defer os.RemoveAll(dir)
+		for _, name := range []string{"config.json", "internal.json", "onchain.json"} {
+			data, err := examples.Files.ReadFile(name)
+			if err != nil {
+				return fail(err)
+			}
+			if err = os.WriteFile(filepath.Join(dir, name), data, 0600); err != nil {
+				return fail(err)
+			}
+		}
+		*cfgPath = filepath.Join(dir, "config.json")
+	}
+	cfg, err := config.LoadConfig(*cfgPath)
+	if err != nil {
+		return fail(err)
+	}
+	if *format != "" {
+		cfg.Output.Format = *format
+	}
+	if *out != "" {
+		cfg.Output.FilePath = *out
+	} else if *demo {
+		cfg.Output.FilePath = "discrepancy_report.json"
+	}
+	if err = cfg.Validate(); err != nil {
+		return fail(err)
+	}
+	if cfg.Output.Format == "both" && cfg.Output.FilePath == "-" {
+		return fail(fmt.Errorf("use --format json for JSON stdout"))
+	}
+	if cfg.Output.FilePath != "-" && cfg.Output.Format != "table" {
+		dest, _ := filepath.Abs(cfg.Output.FilePath)
+		for _, path := range []string{*cfgPath, cfg.TargetApp.SourcePath, cfg.Stellar.OnChainPath} {
+			if path == "" {
+				continue
+			}
+			src, _ := filepath.Abs(path)
+			destInfo, destErr := os.Stat(dest)
+			srcInfo, srcErr := os.Stat(src)
+			if dest == src || (destErr == nil && srcErr == nil && os.SameFile(destInfo, srcInfo)) {
+				return fail(fmt.Errorf("report path must not overwrite an input"))
+			}
 		}
 	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	report, err := reconcile(ctx, cfg)
+	if err != nil {
+		return fail(err)
+	}
+	if *demo {
+		report.GeneratedAt = cfg.Reconciliation.End
+	}
+	f := output.NewFormatter(stdout)
+	if cfg.Output.Format == "table" || cfg.Output.Format == "both" {
+		if err = f.RenderTerminalTable(report); err != nil {
+			return fail(err)
+		}
+	}
+	if cfg.Output.Format == "json" || cfg.Output.Format == "both" {
+		if err = f.ExportJSON(report, cfg.Output.FilePath); err != nil {
+			return fail(err)
+		}
+	}
+	if report.TotalUnknown > 0 {
+		return 3
+	}
+	if report.TotalDiscrepancies > 0 {
+		return 2
+	}
+	return 0
 }
-
-func runReconciliation(cfg *config.Config, outputFormat, outputPath string) {
-	ctx := context.Background()
-
-	var conn connector.Connector
-	if cfg.TargetApp.Name == "stellopay" {
-		conn = stellopay.NewStellopayConnector(cfg.TargetApp.SourcePath)
+func reconcile(ctx context.Context, cfg *config.Config) (*types.DiscrepancyReport, error) {
+	start, end := cfg.Reconciliation.Start, cfg.Reconciliation.End
+	ips, err := file.NewFileConnector(cfg.TargetApp.SourcePath, cfg.TargetApp.Format, cfg.TargetApp.Name).FetchInternalPayments(ctx, connector.Filter{TimeStart: start, TimeEnd: end})
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range ips {
+		if p.Network != cfg.Stellar.Network {
+			return nil, fmt.Errorf("internal record network differs from config")
+		}
+		found := false
+		for _, a := range cfg.Stellar.Accounts {
+			if a == p.Sender || a == p.Recipient {
+				found = true
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("internal record outside configured account scope")
+		}
+	}
+	var observed ingest.FetchResult
+	if cfg.Stellar.OnChainPath != "" {
+		f, err := os.Open(cfg.Stellar.OnChainPath)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		dec := json.NewDecoder(f)
+		dec.DisallowUnknownFields()
+		if err = dec.Decode(&observed); err != nil {
+			return nil, err
+		}
+		var extra any
+		if dec.Decode(&extra) != io.EOF {
+			return nil, fmt.Errorf("expected one offline observation object")
+		}
+		if observed.Payments == nil {
+			return nil, fmt.Errorf("payments must be an array")
+		}
+		if observed.Coverage.Network != cfg.Stellar.Network {
+			return nil, fmt.Errorf("offline coverage network mismatch")
+		}
+		for _, a := range cfg.Stellar.Accounts {
+			found := false
+			for _, b := range observed.Coverage.Accounts {
+				if a == b {
+					found = true
+				}
+			}
+			if !found {
+				return nil, fmt.Errorf("offline fixture does not cover configured accounts")
+			}
+		}
+		observed.Coverage.Source = "offline-file"
+		observed.Coverage.Reason = "Offline caller assertion, not live verification: " + observed.Coverage.Reason
 	} else {
-		conn = file.NewFileConnector(cfg.TargetApp.SourcePath, cfg.TargetApp.Format, cfg.TargetApp.Name)
-	}
-
-	filter := connector.Filter{Limit: 1000}
-	internals, err := conn.FetchInternalPayments(ctx, filter)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error fetching internal payment records: %v\n", err)
-		os.Exit(1)
-	}
-
-	horizonClient := ingest.NewHorizonIngestor(cfg.Stellar.HorizonURL)
-	now := time.Now()
-	windowStart := now.Add(-24 * time.Hour)
-	onChains, err := horizonClient.FetchOnChainPayments(ctx, cfg.Stellar.Accounts, windowStart, now)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "⚠️ Warning querying Horizon: %v (falling back to empty on-chain list)\n", err)
-		onChains = []types.OnChainPayment{}
-	}
-
-	recOpts := engine.ReconcileOptions{
-		TimeframeToleranceSec: cfg.Reconciliation.TimeframeToleranceSec,
-		IgnoreFailedOnChain:   cfg.Reconciliation.IgnoreFailedOnChain,
-	}
-
-	rec := engine.NewReconciler(recOpts)
-	report := rec.Reconcile(cfg.TargetApp.Name, windowStart, now, internals, onChains)
-
-	fmtter := output.NewFormatter(os.Stdout)
-	if outputFormat == "table" || outputFormat == "both" {
-		fmtter.RenderTerminalTable(report)
-	}
-
-	if outputFormat == "json" || outputFormat == "both" {
-		if err := fmtter.ExportJSON(report, outputPath); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Error exporting JSON: %v\n", err)
+		h := ingest.NewHorizonIngestor(cfg.Stellar.HorizonURL)
+		h.Network = cfg.Stellar.Network
+		tolerance := time.Duration(cfg.Reconciliation.TimeframeToleranceSec) * time.Second
+		observed, err = h.Fetch(ctx, cfg.Stellar.Accounts, start.Add(-tolerance), end.Add(tolerance))
+		if err != nil {
+			return nil, fmt.Errorf("ingestion failed; no report produced: %w", err)
 		}
 	}
+	scoped := []types.OnChainPayment{}
+	for _, p := range observed.Payments {
+		if err = types.ValidateOnChain(p); err != nil {
+			return nil, err
+		}
+		if p.Network != cfg.Stellar.Network {
+			return nil, fmt.Errorf("observed network mismatch")
+		}
+		found := false
+		for _, a := range cfg.Stellar.Accounts {
+			if a == p.Account || a == p.Destination {
+				found = true
+			}
+		}
+		if found {
+			scoped = append(scoped, p)
+		}
+	}
+	observed.Coverage.Accounts = cfg.Stellar.Accounts
+	observed.Coverage.InternalComplete = cfg.TargetApp.Complete
+	opts := engine.ReconcileOptions{TimeframeToleranceSec: cfg.Reconciliation.TimeframeToleranceSec, Coverage: observed.Coverage}
+	return engine.NewReconciler(opts).Reconcile(cfg.TargetApp.Name, start, end, ips, scoped), nil
 }

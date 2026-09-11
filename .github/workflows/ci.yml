@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   push:
@@ -17,10 +17,22 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.22.2'
 
       - name: Run Vet
         run: go vet ./...
 
       - name: Build Binary
         run: go build -v ./cmd/ledger-parity
+
+      - name: Tests
+        run: go test -race ./...
+      - name: Offline demo
+        shell: bash
+        run: |
+          set +e
+          ./ledger-parity --demo --format json --out report.json
+          status=$?
+          set -e
+          test "$status" -eq 3
+          python3 -c 'import json; r=json.load(open("report.json")); assert (r["total_matched"],r["total_discrepancies"],r["total_unknown"]) == (1,4,3)'
