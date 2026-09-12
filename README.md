@@ -6,6 +6,8 @@
 [![License](https://img.shields.io/github/license/LedgerParity/ledger-parity-cli?style=flat&color=7A5CFF)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/LedgerParity/ledger-parity-cli/ci.yml?branch=main&style=flat&label=CI&logo=github&labelColor=0B0E1E)](.github/workflows/ci.yml)
 
+See the [LedgerParity documentation](https://ledgerparity.github.io/) for the full organization overview, concepts, quick start, and evidence discipline.
+
 A read-only tool for Stellar payment operators to compare an application export with ordinary classic Stellar payment operations. It helps investigate settlement notifications that were missed, incorrect amounts and duplicate application records. Developer preview: no demonstrated operator adoption or production-readiness claim.
 
 Version 0.3.0-preview adds a release-scoped **SDP 7.0.0 CSV workflow** and **offline evidence replay**. See [runnable SDP example](docs/SDP_EVIDENCE.md): export mapping requires independently known sender/network/settlement scope, preserves business references and leaves export completeness unproven. `--bundle new-file.json` captures evidence alongside a report; `--replay new-file.json` verifies and re-evaluates it offline. These are implemented features with synthetic contract tests, not deployed SDP or production validation.
