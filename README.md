@@ -54,7 +54,7 @@ Verify a report against a saved proof:
 # prints VERIFIED or MISMATCH
 ```
 
-The [Soroban contract](https://github.com/LedgerParity/ledger-parity-contract) stores hashes on-chain for independent verification. Deploy separately; the CLI stores local proofs by default.
+The [Soroban contract](https://github.com/LedgerParity/-ledger-parity-contract) stores hashes on-chain for independent verification. Deploy separately; the CLI stores local proofs by default.
 
 For live read-only ingestion, copy examples/config.json, replace `stellar.on_chain_path` with `stellar.horizon_url`, set the exact network passphrase and monitored accounts, and provide a canonical application export. Always use an explicit RFC3339 start/end window. The CLI expands the Horizon scan by the time tolerance. `target_app.complete` asserts that the export contains every relevant ordinary payment for those accounts/window; leave false unless you can establish that. No secrets or wallets are needed. An optional public-testnet smoke check is available with `powershell -File scripts/Test-LiveRead.ps1` after a Windows build; it synthesizes an expected row from public testnet data and documents that evidence limit.
 
