@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/LedgerParity/ledger-parity-cli?style=flat&color=7A5CFF)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/LedgerParity/ledger-parity-cli/ci.yml?branch=main&style=flat&label=CI&logo=github&labelColor=0B0E1E)](.github/workflows/ci.yml)
 
-See the [LedgerParity documentation](https://ledgerparity.github.io/) for the full organization overview, concepts, quick start, and evidence discipline.
+See the [LedgerParity documentation](https://ledgerparity.vercel.app/) (also available at [ledgerparity.github.io](https://ledgerparity.github.io/)) for the full organization overview, concepts, quick start, and evidence discipline.
 
 A read-only tool for Stellar payment operators to compare an application export with ordinary classic Stellar payment operations. It helps investigate settlement notifications that were missed, incorrect amounts and duplicate application records. Developer preview: no demonstrated operator adoption or production-readiness claim.
 
