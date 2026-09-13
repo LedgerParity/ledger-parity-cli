@@ -1,39 +1,19 @@
-# LedgerParity Reconciliation Dashboard
+﻿# LedgerParity Reconciliation Dashboard
 
-A single-file, no-build-step HTML viewer for LedgerParity reconciliation reports.
+An offline, single-file HTML viewer for CLI reconciliation reports. Open `index.html` in a modern browser and choose or drop a report produced by `ledger-parity --format json`. Files remain in the browser; no upload or build step is required. The file picker supports keyboard use and stays available for loading another report.
 
-## Usage
+The viewer shows internal record and on-chain operation counts separately, matches, discrepancies and unknown results. Coverage assertions, source, reason, monitored accounts, network and the reconciliation window are visible alongside the results. Viewing a report does not authenticate it or re-run reconciliation.
 
-1. Run a reconciliation:
-   ```sh
-   ledger-parity --config config.json --format json --out report.json
-   ```
+Search covers payment IDs, operation IDs (including ambiguity candidates), business references, transaction hashes, both sides' accounts, assets, issuers, amounts, statuses and notes. Amounts and IDs remain strings. On-chain-only records show their sender and destination. The table displays up to 500 matching rows; search checks the full report and the visible count explains the limit.
 
-2. Open `dashboard/index.html` in any browser
+Reports must be at most 32 MiB and have valid report fields, result statuses, coverage metadata and consistent result/count summaries. Proof files, evidence bundles and invalid reports produce an inline error. A failed load hides the previous report. Report text is escaped before HTML rendering.
 
-3. Drag & drop `report.json` onto the page (or click to browse)
+## Verification
 
-## Features
+With Go and a modern Node.js on PATH, from the repository root:
 
-- **Summary cards** — total records, matches, discrepancies, unknowns
-- **Bar chart** — visual breakdown by discrepancy type
-- **Searchable table** — filter by ID, sender, recipient, asset, amount
-- **Brand palette** — ink, teal, violet, amber
-- **Offline** — no external dependencies, works without internet
-
-## Report format
-
-Accepts any `DiscrepancyReport` JSON produced by `ledger-parity --format json`. The viewer reads:
-
-- `total_internal`, `total_matched`, `total_discrepancies`, `total_unknown`
-- `discrepancy_counts` (map of type → count)
-- `results[]` with `status`, `discrepancy`, `internal_payment`, `on_chain_payment`, `notes`
-- `coverage` for network and time window metadata
-
-## Files
-
+```sh
+node --test dashboard/viewer.test.cjs
 ```
-dashboard/
-  index.html    The dashboard (single file, no build)
-  README.md     This file
-```
+
+Tests generate the actual CLI demo and check rendering, HTML escaping, precision, coverage, candidate IDs, on-chain search, malformed reports, repeated loads, read failures and result limits. Set `LEDGER_PARITY_BIN` to an absolute built CLI path to skip `go run`; CI uses its built binary. These Node tests use a small DOM stub, so browser layout needs a separate visual check.

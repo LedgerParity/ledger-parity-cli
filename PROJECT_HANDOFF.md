@@ -26,3 +26,21 @@ Verification completed: standalone published-dependency checks and byte-identica
 ## Brand and documentation handover 2026-09-12
 
 Org brand assets (mark, tile, lockup, banner) were generated from original SVG sources in `brand/` with `@resvg/resvg-js`; palette tokens and usage are documented in `brand/palette.md` and `brand/README.md`. A static documentation site (`ledger-parity-docs/`, build-free) is live at https://ledgerparity.github.io/ (commit df9aa0f; HTTPS 200 confirmed during publish). GitHub profile content for the org (`LedgerParity/.github`) is staged locally in `org-github/`; the repository has not yet been created on GitHub, so the org profile page is not yet rendered. Repo READMEs now include the brand banner and Go/license/CI badges plus a documentation link. `SECURITY.md` existed in all three repos; governance and code of conduct live in the org-github content. Connectors/docs push required a Git Credential Manager sign-in (completed). Core CI historically required manual dispatch; connectors/cli pushes trigger runs automatically.
+
+## Resumption update 2026-09-13
+
+Recent commits added the HTML dashboard, local checksum flags and a separate Soroban contract repository. The contract checkout with Git history is ../-ledger-parity-contract; ../ledger-parity-contract also exists without Git metadata. Neither was changed in this follow-up.
+
+Fixed local verification: accept the positional report for --verify-check, hash only after successful report output, preserve discrepancy/UNKNOWN exits, validate proof hashes and bounded strict JSON, stream hashing, record UTC creation time, and reject incompatible modes and proof collisions. Proof writes exclusively create new files. Regression tests cover fresh/stale reports, tampering, malformed proofs, input/output collisions and failed report writes.
+
+Local validation: go test ./..., go vet ./..., go build ./... on Windows. No new remote CI or deployment is claimed. Local checksums are unauthenticated byte comparisons; the CLI has no contract submission integration. Next product gate remains a consenting operator's sanitized export and known discrepancy. Dashboard review and contract testing/integration remain separate follow-up work. Older CI links below apply only to their recorded revisions.
+
+## Dashboard continuation 2026-09-13
+
+The offline single-file viewer now validates report shape and result/count consistency, enforces a 32 MiB file limit, escapes report-controlled HTML, shows coverage assertions and candidate operation IDs, and searches both internal and on-chain identities. Internal records and on-chain operations have separate totals. Amounts and IDs remain text. The picker supports keyboard use and repeated loads; failed loads hide stale results and out-of-order reads cannot replace newer reports. Large tables show the first 500 search matches with an explicit count.
+
+Added five Node regression tests using the actual CLI demo, plus a CI step using the built CLI. All five passed locally. A headless Chrome DOM smoke check passed for real report rendering, inert injected HTML and search events; the desktop screenshot was visually inspected. No remote CI run or publish occurred. Browser artifacts are in the workspace's .local-checks directory. Runtime contract submission and operator validation remain outstanding.
+
+## Final local verification 2026-09-13
+
+Final review also fixed --version bypassing incompatible --verify-check flags and rejected non-string dashboard statuses. Go tests, vet and binary build passed; all five dashboard regression tests passed against that binary. A combined SDP report/evidence/proof run returned the expected exit 3, checksum verification returned 0, and offline replay returned 3 with byte-identical report output. Final executable: ../.local-checks/ledger-parity-final.exe. Evidence artifacts: ../.local-checks/final-dd9051effbc64e5bb940e3012a8a48d3/. This completes the local CLI verification and dashboard milestone; no contract deployment, remote CI result or real operator validation is claimed.

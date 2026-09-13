@@ -63,6 +63,12 @@ tr:hover td { background:rgba(63,224,196,0.04); }
 .hidden { display:none; }
 footer { text-align:center; padding:40px 0; color:var(--slate); font-size:12px; }
 footer a { color:var(--teal); text-decoration:none; }
+.drop-zone:focus-visible { outline:2px solid var(--teal); outline-offset:4px; }
+.bar-chart { margin-bottom:30px; overflow:visible; }
+.table-section input { max-width:100%; }
+td { overflow-wrap:anywhere; min-width:100px; }
+#coverage p { margin-top:8px; overflow-wrap:anywhere; }
+#load-status { color:var(--amber); }
 </style>
 </head>
 <body>
@@ -72,13 +78,15 @@ footer a { color:var(--teal); text-decoration:none; }
     <p>Reconciliation report viewer — load a JSON report to visualize results</p>
   </header>
 
-  <div id="drop-zone" class="drop-zone">
+  <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Choose a reconciliation report">
     <div class="icon">&#128206;</div>
     <p>Drag &amp; drop a report JSON file here, or <strong>click to browse</strong></p>
     <input type="file" id="file-input" accept=".json" style="display:none">
   </div>
 
+  <p id="load-status" role="status" aria-live="polite"></p>
   <div id="dashboard" class="hidden">
+    <div class="chart-section" id="coverage"></div>
     <div class="stats" id="stats"></div>
     <div class="chart-section">
       <h2>Result Breakdown</h2>
@@ -86,14 +94,16 @@ footer a { color:var(--teal); text-decoration:none; }
     </div>
     <div class="table-section">
       <h2>Detailed Results</h2>
+      <label for="search">Search results</label><br>
       <input type="text" id="search" placeholder="Search by ID, sender, recipient, asset...">
       <table>
         <thead>
-          <tr><th>Status</th><th>Type</th><th>Internal ID</th><th>Amount</th><th>Asset</th><th>Sender</th><th>Recipient</th><th>Delta</th><th>Notes</th></tr>
+          <tr><th>Status</th><th>Type</th><th>Internal ID</th><th>Operation IDs</th><th>Amount</th><th>Asset</th><th>Sender</th><th>Recipient</th><th>Delta</th><th>Notes</th></tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
+    <div class="meta" id="result-count" aria-live="polite"></div>
     <div class="meta" id="meta"></div>
   </div>
 
@@ -107,96 +117,136 @@ const $ = s => document.querySelector(s);
 const dropZone = $('#drop-zone');
 const fileInput = $('#file-input');
 const dashboard = $('#dashboard');
+const MAX_BYTES = 32 * 1024 * 1024;
+let currentResults = [];
+let loadSequence = 0;
+const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+const display = value => escapeHTML(value || '—');
 
-dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('click', e => { if (e.target !== fileInput) fileInput.click(); });
+dropZone.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+});
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('active'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('active'); handleFile(e.dataTransfer.files[0]); });
-fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+fileInput.addEventListener('change', e => { handleFile(e.target.files[0]); fileInput.value = ''; });
+$('#search').addEventListener('input', e => renderTable(currentResults, e.target.value));
+
+function validateReport(r) {
+  const object = x => x !== null && typeof x === 'object' && !Array.isArray(x);
+  if (!object(r) || !Array.isArray(r.results) || !object(r.coverage) || !object(r.discrepancy_counts)) {
+    throw new Error('Choose a CLI report JSON, not a proof or evidence bundle.');
+  }
+  for (const key of ['total_internal', 'total_on_chain', 'total_matched', 'total_discrepancies', 'total_unknown']) {
+    if (!Number.isSafeInteger(r[key]) || r[key] < 0) throw new Error('Invalid report total: ' + key);
+  }
+  for (const key of ['generated_at', 'time_window_start', 'time_window_end']) {
+    if (typeof r[key] !== 'string' || !Number.isFinite(Date.parse(r[key]))) throw new Error('Invalid report date: ' + key);
+  }
+  const c = r.coverage;
+  if (typeof c.network !== 'string' || typeof c.complete !== 'boolean' || typeof c.internal_complete !== 'boolean' ||
+      typeof c.source !== 'string' || typeof c.reason !== 'string' || !Array.isArray(c.accounts) || c.accounts.some(a => typeof a !== 'string')) {
+    throw new Error('Invalid coverage metadata.');
+  }
+  const totals = {EXACT:0, TOLERANT_MATCH:0, DISCREPANCY:0, UNKNOWN:0};
+  const counts = new Map();
+  for (const row of r.results) {
+    if (!object(row) || typeof row.status !== 'string' || !Object.hasOwn(totals, row.status) || typeof row.discrepancy !== 'string') throw new Error('Invalid result status or type.');
+    totals[row.status]++;
+    if (row.status === 'DISCREPANCY') counts.set(row.discrepancy, (counts.get(row.discrepancy) || 0) + 1);
+    for (const key of ['notes', 'amount_delta']) {
+      if (row[key] != null && typeof row[key] !== 'string') throw new Error('Invalid result ' + key);
+    }
+    for (const key of ['internal_payment', 'on_chain_payment']) {
+      if (row[key] == null) continue;
+      if (!object(row[key])) throw new Error('Invalid payment record.');
+      for (const field of ['id', 'sender', 'recipient', 'asset', 'amount', 'account', 'destination', 'asset_code', 'asset_issuer', 'operation_id', 'reference_id', 'business_reference', 'transaction_hash']) {
+        if (row[key][field] != null && typeof row[key][field] !== 'string') throw new Error('Payment ' + field + ' must be text.');
+      }
+    }
+    if (row.candidate_operation_ids != null && (!Array.isArray(row.candidate_operation_ids) || row.candidate_operation_ids.some(id => typeof id !== 'string'))) {
+      throw new Error('Invalid candidate operation IDs.');
+    }
+  }
+  if (totals.EXACT + totals.TOLERANT_MATCH !== r.total_matched || totals.DISCREPANCY !== r.total_discrepancies || totals.UNKNOWN !== r.total_unknown) {
+    throw new Error('Report totals do not agree with result rows.');
+  }
+  for (const [type, count] of Object.entries(r.discrepancy_counts)) {
+    if (!Number.isSafeInteger(count) || count < 0 || count !== (counts.get(type) || 0)) throw new Error('Discrepancy counts do not agree with result rows.');
+  }
+  for (const [type, count] of counts) {
+    if (r.discrepancy_counts[type] !== count) throw new Error('Missing discrepancy count.');
+  }
+  return r;
+}
 
 function handleFile(file) {
+  if (!file) return;
+  const sequence = ++loadSequence;
+  currentResults = [];
+  dashboard.classList.add('hidden');
+  $('#search').value = '';
+  $('#load-status').textContent = 'Loading report…';
+  if (file.size > MAX_BYTES) {
+    $('#load-status').textContent = 'Report exceeds the 32 MiB limit.';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => {
+    if (sequence !== loadSequence) return;
     try {
-      const report = JSON.parse(e.target.result);
-      render(report);
-      dropZone.classList.add('hidden');
+      render(validateReport(JSON.parse(e.target.result)));
       dashboard.classList.remove('hidden');
+      $('#load-status').textContent = 'Loaded ' + file.name + '. Files stay in this browser. Choose another report above.';
     } catch (err) {
-      alert('Invalid JSON: ' + err.message);
+      $('#load-status').textContent = 'Cannot load report: ' + err.message;
     }
   };
+  reader.onerror = () => { if (sequence === loadSequence) $('#load-status').textContent = 'Cannot read this file. Please choose it again.'; };
   reader.readAsText(file);
 }
 
 function render(r) {
-  const counts = r.discrepancy_counts || {};
-  const matchCount = r.total_matched || 0;
-  const discCount = r.total_discrepancies || 0;
-  const unkCount = r.total_unknown || 0;
-  const total = r.total_internal || 0;
-
-  $('#stats').innerHTML = `
-    <div class="stat-card total"><div class="value">${total}</div><div class="label">Total Records</div></div>
-    <div class="stat-card match"><div class="value">${matchCount}</div><div class="label">Exact Matches</div></div>
-    <div class="stat-card discrepancy"><div class="value">${discCount}</div><div class="label">Discrepancies</div></div>
-    <div class="stat-card unknown"><div class="value">${unkCount}</div><div class="label">Unknown</div></div>
-  `;
-
+  const cards = [['Internal records', r.total_internal, 'total'], ['On-chain operations', r.total_on_chain, 'total'],
+    ['Matches', r.total_matched, 'match'], ['Discrepancies', r.total_discrepancies, 'discrepancy'], ['Unknown', r.total_unknown, 'unknown']];
+  $('#stats').innerHTML = cards.map(([label, count, style]) => `<div class="stat-card ${style}"><div class="value">${count}</div><div class="label">${label}</div></div>`).join('');
   const types = [
-    { label: 'Match', count: matchCount, color: 'var(--green)' },
-    { label: 'Missing', count: counts['MISSING_ON_CHAIN'] || 0, color: 'var(--red)' },
-    { label: 'Amount', count: counts['AMOUNT_MISMATCH'] || 0, color: '#FF6B6B' },
-    { label: 'Duplicate', count: counts['DUPLICATE_INTERNAL'] || 0, color: '#FF8C42' },
-    { label: 'Orphaned', count: counts['ORPHANED_ON_CHAIN'] || 0, color: '#E056A0' },
-    { label: 'Status', count: counts['STATUS_MISMATCH'] || 0, color: '#FFB84A' },
-    { label: 'Invalid', count: counts['INVALID_DATA'] || 0, color: '#FF4D4D' },
-    { label: 'Unknown', count: unkCount, color: 'var(--amber)' },
-  ].filter(t => t.count > 0);
-
+    {label:'Matches', count:r.total_matched, color:'var(--green)'},
+    {label:'Discrepancies', count:r.total_discrepancies, color:'var(--red)'},
+    {label:'Unknown', count:r.total_unknown, color:'var(--amber)'}
+  ];
   const max = Math.max(...types.map(t => t.count), 1);
-  $('#chart').innerHTML = types.map(t => `
-    <div class="bar" style="height:${Math.max((t.count/max)*140,4)}px;background:${t.color}">
-      <div class="count" style="color:${t.color}">${t.count}</div>
-      <div class="bar-label">${t.label}</div>
-    </div>
-  `).join('');
-
-  renderTable(r.results || []);
-  $('#search').addEventListener('input', e => renderTable(r.results || [], e.target.value));
-
-  const gen = r.generated_at ? new Date(r.generated_at).toLocaleString() : 'unknown';
-  $('#meta').innerHTML = `Generated: ${gen} &middot; Network: ${(r.coverage||{}).network||'unknown'} &middot; Window: ${(r.coverage||{}).start||'?'} → ${(r.coverage||{}).end||'?'}`;
+  $('#chart').innerHTML = types.map(t => `<div class="bar" style="height:${Math.max(t.count/max*140, 2)}px;background:${t.color}"><div class="count">${t.count}</div><div class="bar-label">${t.label}</div></div>`).join('');
+  const c = r.coverage;
+  $('#coverage').innerHTML = `<h2>Evidence coverage</h2><p>On-chain history: ${c.complete ? 'complete (provider/caller assertion)' : 'incomplete'} · Application export: ${c.internal_complete ? 'complete (caller assertion)' : 'completeness unproven'}</p><p>Source: ${display(c.source)}</p><p>${display(c.reason)}</p><p>Accounts: ${display(c.accounts.join(', '))}</p><p>Displaying a report does not verify its authenticity or re-run reconciliation.</p>`;
+  currentResults = r.results;
+  renderTable(currentResults);
+  $('#meta').textContent = 'Generated: ' + r.generated_at + ' · Network: ' + c.network + ' · Reconciliation window: ' + r.time_window_start + ' → ' + r.time_window_end;
 }
 
-function renderTable(results, filter) {
-  const q = (filter || '').toLowerCase();
-  const filtered = q ? results.filter(r => {
+function renderTable(results, filter = '') {
+  const q = filter.toLowerCase();
+  const filtered = results.filter(r => {
     const ip = r.internal_payment || {};
     const oc = r.on_chain_payment || {};
-    return [ip.id, ip.sender, ip.recipient, ip.asset, ip.amount, oc.asset_code, r.notes, r.discrepancy]
-      .some(v => (v||'').toLowerCase().includes(q));
-  }) : results;
-
-  $('#tbody').innerHTML = filtered.map(r => {
+    return !q || [ip.id, ip.sender, ip.recipient, ip.asset, ip.amount, ip.asset_issuer, ip.operation_id, ip.business_reference,
+      ip.reference_id, oc.account, oc.destination, oc.asset_code, oc.asset_issuer, oc.amount, oc.operation_id, oc.transaction_hash,
+      r.notes, r.discrepancy, r.status, ...(r.candidate_operation_ids || [])].some(v => String(v ?? '').toLowerCase().includes(q));
+  });
+  // Keep large exports responsive; search still checks every result.
+  const shown = filtered.slice(0, 500);
+  $('#tbody').innerHTML = shown.map(r => {
     const ip = r.internal_payment || {};
     const oc = r.on_chain_payment || {};
-    const status = (r.status || '').toLowerCase();
-    const badgeClass = status === 'exact' ? 'match' : status === 'discrepancy' ? 'discrepancy' : 'unknown';
-    const delta = r.amount_delta && r.amount_delta !== '0' ? `<span class="amount-delta">${r.amount_delta}</span>` : '—';
-    return `<tr>
-      <td><span class="badge ${badgeClass}">${r.status}</span></td>
-      <td>${r.discrepancy || '—'}</td>
-      <td>${ip.id || '—'}</td>
-      <td>${ip.amount || oc.amount || '—'}</td>
-      <td>${ip.asset || oc.asset_code || '—'}</td>
-      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${ip.sender||''}">${(ip.sender||'').substring(0,12)}…</td>
-      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${ip.recipient||''}">${(ip.recipient||'').substring(0,12)}…</td>
-      <td>${delta}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${r.notes||''}">${r.notes||'—'}</td>
-    </tr>`;
-  }).join('');
+    const badgeClass = ['EXACT', 'TOLERANT_MATCH'].includes(r.status) ? 'match' : r.status === 'DISCREPANCY' ? 'discrepancy' : 'unknown';
+    const operations = [...new Set([ip.operation_id, oc.operation_id, ...(r.candidate_operation_ids || [])].filter(Boolean))];
+    const asset = [ip.asset || oc.asset_code, ip.asset_issuer || oc.asset_issuer].filter(Boolean).join(' / ');
+    return `<tr><td><span class="badge ${badgeClass}">${display(r.status)}</span></td><td>${display(r.discrepancy)}</td><td>${display(ip.id)}</td><td>${display(operations.join(', '))}</td><td>${display(ip.amount || oc.amount)}</td><td>${display(asset)}</td><td>${display(ip.sender || oc.account)}</td><td>${display(ip.recipient || oc.destination)}</td><td>${display(r.amount_delta)}</td><td>${display(r.notes)}</td></tr>`;
+  }).join('') || '<tr><td colspan="10">No matching results.</td></tr>';
+  $('#result-count').textContent = 'Showing ' + shown.length + ' of ' + filtered.length + ' matching results (' + results.length + ' total). ' + (filtered.length > 500 ? 'Refine search to see other records.' : '');
 }
+
 </script>
 </body>
 </html>
