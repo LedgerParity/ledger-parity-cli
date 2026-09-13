@@ -13,3 +13,4 @@ test_report.json
 .local-checks/
 /examples/report.json
 /examples/-
+/dist/
