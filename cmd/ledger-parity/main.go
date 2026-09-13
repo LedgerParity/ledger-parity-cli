@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-const Version = "0.3.1-preview"
+const Version = "0.3.2-preview"
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)

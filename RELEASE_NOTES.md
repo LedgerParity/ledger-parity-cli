@@ -1,4 +1,6 @@
-# 0.3.1-preview
+# 0.3.2-preview
+
+This patch fixes README image packaging and clipped banner text. All platform archives now include the README's local image assets. Reconciliation behavior is unchanged from 0.3.1-preview.
 
 This developer preview packages the ordinary Stellar-payment reconciliation workflow, scoped SDP CSV import, evidence capture/replay, local SHA-256 checks and offline dashboard.
 
