@@ -39,7 +39,7 @@ A **[reconciliation dashboard](dashboard/)** is included: open `dashboard/index.
 
 ### Report verification
 
-Store a tamper-proof proof after generating a report:
+Save a local SHA-256 checksum after generating a report:
 
 ```sh
 ./ledger-parity --config examples/config.json --format json --out report.json \
@@ -54,7 +54,9 @@ Verify a report against a saved proof:
 # prints VERIFIED or MISMATCH
 ```
 
-The [Soroban contract](https://github.com/LedgerParity/-ledger-parity-contract) stores hashes on-chain for independent verification. Deploy separately; the CLI stores local proofs by default.
+`--verify auto` creates a new `report.json.proof.json`; an explicit path can replace `auto`. It requires JSON file output (`json` or `both`) and refuses to overwrite an existing proof or an input, report, or bundle. Reconciliation exit codes still apply. Replay cannot be combined with `--verify`. `--verify-check` accepts exactly one report path and returns 0 for matching bytes or 1 for a mismatch/error.
+
+Local checksums compare bytes against a saved hash; they do not authenticate reports, metadata, or ledger history. Someone who replaces both files can make them agree. The separate [Soroban contract](https://github.com/LedgerParity/-ledger-parity-contract) provides hash storage code; the CLI does not call it or submit transactions.
 
 For live read-only ingestion, copy examples/config.json, replace `stellar.on_chain_path` with `stellar.horizon_url`, set the exact network passphrase and monitored accounts, and provide a canonical application export. Always use an explicit RFC3339 start/end window. The CLI expands the Horizon scan by the time tolerance. `target_app.complete` asserts that the export contains every relevant ordinary payment for those accounts/window; leave false unless you can establish that. No secrets or wallets are needed. An optional public-testnet smoke check is available with `powershell -File scripts/Test-LiveRead.ps1` after a Windows build; it synthesizes an expected row from public testnet data and documents that evidence limit.
 
