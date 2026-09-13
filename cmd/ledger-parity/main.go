@@ -54,19 +54,19 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	fail := func(err error) int { fmt.Fprintln(stderr, err); return 1 }
-	if flags.NArg() != 0 {
+	if *verifyCheck == "" && flags.NArg() != 0 {
 		return fail(fmt.Errorf("unexpected positional arguments"))
 	}
-	if *version {
+	if *version && *verifyCheck == "" {
 		fmt.Fprintln(stdout, Version)
 		return 0
 	}
 	if *verifyCheck != "" {
-		if *demo || *cfgPath != "" || *bundlePath != "" {
-			return fail(fmt.Errorf("verify-check cannot be combined with config, demo or bundle"))
+		if *demo || *cfgPath != "" || *bundlePath != "" || *replayPath != "" || *verifyPath != "" || *format != "" || *out != "" || *version {
+			return fail(fmt.Errorf("verify-check cannot be combined with other modes or output flags"))
 		}
-		if flags.NArg() == 0 {
-			return fail(fmt.Errorf("supply a report JSON path to verify"))
+		if flags.NArg() != 1 {
+			return fail(fmt.Errorf("supply exactly one report JSON path to verify"))
 		}
 		proof, err := verify.LoadProof(*verifyCheck)
 		if err != nil {
@@ -84,6 +84,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if *replayPath != "" {
+		if *verifyPath != "" {
+			return fail(fmt.Errorf("replay cannot be combined with verify"))
+		}
 		if *demo || *cfgPath != "" || *bundlePath != "" {
 			return fail(fmt.Errorf("replay cannot be combined with config, demo or bundle"))
 		}
@@ -141,6 +144,22 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if err = cfg.Validate(); err != nil {
 		return fail(err)
 	}
+	if *verifyPath != "" {
+		if cfg.Output.FilePath == "-" || cfg.Output.Format == "table" {
+			return fail(fmt.Errorf("--verify requires a JSON report file (json or both format)"))
+		}
+		if *verifyPath == "auto" {
+			*verifyPath = cfg.Output.FilePath + ".proof.json"
+		}
+		for _, path := range []string{*cfgPath, cfg.TargetApp.SourcePath, cfg.Stellar.OnChainPath, cfg.Output.FilePath, *bundlePath} {
+			if path != "" && samePath(*verifyPath, path) {
+				return fail(fmt.Errorf("proof path must differ from inputs, report and bundle"))
+			}
+		}
+		if _, err := os.Lstat(*verifyPath); !os.IsNotExist(err) {
+			return fail(fmt.Errorf("proof path must be a new file"))
+		}
+	}
 	if cfg.Output.Format == "both" && cfg.Output.FilePath == "-" {
 		return fail(fmt.Errorf("use --format json for JSON stdout"))
 	}
@@ -183,30 +202,29 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return fail(fmt.Errorf("report resolves to evidence file; refusing overwrite"))
 		}
 	}
+	code := render(report, cfg.Output.Format, cfg.Output.FilePath, stdout, stderr)
+	if code == 1 {
+		return code
+	}
 	if *verifyPath != "" {
 		reportPath := cfg.Output.FilePath
-		if reportPath == "-" {
-			return fail(fmt.Errorf("--verify cannot write proof when report goes to stdout"))
-		}
 		hash, err := verify.HashReport(reportPath)
 		if err != nil {
 			return fail(err)
 		}
 		proof := &verify.Proof{
-			Hash:    hash,
-			Owner:   "ledger-parity",
-			Network: cfg.Stellar.Network,
+			Hash:      hash,
+			Owner:     "ledger-parity",
+			Network:   cfg.Stellar.Network,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
 		}
 		proofPath := *verifyPath
-		if proofPath == "auto" {
-			proofPath = reportPath + ".proof.json"
-		}
 		if err := verify.SaveProof(proofPath, proof); err != nil {
 			return fail(err)
 		}
 		fmt.Fprintf(stderr, "Verification proof saved: %s (hash=%s)\n", proofPath, hash[:16])
 	}
-	return render(report, cfg.Output.Format, cfg.Output.FilePath, stdout, stderr)
+	return code
 }
 
 func samePath(a, b string) bool {
