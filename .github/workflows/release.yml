@@ -1,0 +1,30 @@
+name: Preview release
+on:
+  push:
+    tags: ['v*-preview']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Validate and package
+        shell: pwsh
+        run: |
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { throw 'Vet failed' }
+          node --test dashboard/viewer.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Dashboard tests failed' }
+          $version = (Select-String cmd/ledger-parity/main.go -Pattern '^const Version = "([^"]+)"$').Matches[0].Groups[1].Value
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag/version mismatch' }
+          ./scripts/Build-Release.ps1
+      - name: Publish preview packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.zip dist/SHA256SUMS --verify-tag --prerelease --title "LedgerParity $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
