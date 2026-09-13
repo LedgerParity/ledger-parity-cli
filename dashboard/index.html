@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LedgerParity — Reconciliation Dashboard</title>
+<style>
+:root {
+  --ink: #0B0E1E;
+  --ink-2: #141A36;
+  --line: #262D52;
+  --teal: #3FE0C4;
+  --violet: #7A5CFF;
+  --amber: #FFB84A;
+  --text: #F3F1E7;
+  --slate: #9AA3C0;
+  --red: #FF6B6B;
+  --green: #4ADE80;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--ink); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; min-height:100vh; }
+.container { max-width:1200px; margin:0 auto; padding:24px; }
+header { text-align:center; padding:40px 0 24px; }
+header h1 { font-size:28px; font-weight:600; letter-spacing:-0.5px; }
+header h1 span { color:var(--teal); }
+header p { color:var(--slate); margin-top:8px; font-size:14px; }
+
+.drop-zone { border:2px dashed var(--line); border-radius:12px; padding:48px; text-align:center; margin:24px 0; cursor:pointer; transition:border-color .2s; }
+.drop-zone:hover, .drop-zone.active { border-color:var(--teal); }
+.drop-zone p { color:var(--slate); font-size:14px; }
+.drop-zone .icon { font-size:48px; margin-bottom:12px; }
+
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin:24px 0; }
+.stat-card { background:var(--ink-2); border:1px solid var(--line); border-radius:10px; padding:20px; text-align:center; }
+.stat-card .value { font-size:32px; font-weight:700; }
+.stat-card .label { color:var(--slate); font-size:13px; margin-top:4px; }
+.stat-card.match .value { color:var(--green); }
+.stat-card.discrepancy .value { color:var(--red); }
+.stat-card.unknown .value { color:var(--amber); }
+.stat-card.total .value { color:var(--teal); }
+
+.chart-section { background:var(--ink-2); border:1px solid var(--line); border-radius:10px; padding:24px; margin:24px 0; }
+.chart-section h2 { font-size:16px; margin-bottom:16px; color:var(--slate); font-weight:500; }
+.bar-chart { display:flex; gap:8px; align-items:flex-end; height:160px; }
+.bar { flex:1; border-radius:6px 6px 0 0; position:relative; min-width:40px; transition:height .3s; }
+.bar .count { position:absolute; top:-24px; left:50%; transform:translateX(-50%); font-size:13px; font-weight:600; }
+.bar .bar-label { position:absolute; bottom:-24px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--slate); white-space:nowrap; }
+
+.table-section { background:var(--ink-2); border:1px solid var(--line); border-radius:10px; padding:24px; margin:24px 0; overflow-x:auto; }
+.table-section h2 { font-size:16px; margin-bottom:16px; color:var(--slate); font-weight:500; }
+.table-section input { background:var(--ink); border:1px solid var(--line); border-radius:6px; padding:8px 12px; color:var(--text); font-size:13px; width:300px; margin-bottom:16px; }
+.table-section input:focus { outline:none; border-color:var(--teal); }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { text-align:left; padding:10px 12px; border-bottom:2px solid var(--line); color:var(--slate); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; }
+td { padding:10px 12px; border-bottom:1px solid var(--line); }
+tr:hover td { background:rgba(63,224,196,0.04); }
+.badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+.badge.match { background:rgba(74,222,128,0.15); color:var(--green); }
+.badge.discrepancy { background:rgba(255,107,107,0.15); color:var(--red); }
+.badge.unknown { background:rgba(255,184,74,0.15); color:var(--amber); }
+.amount-delta { color:var(--red); font-weight:500; }
+.meta { color:var(--slate); font-size:12px; margin-top:8px; }
+.hidden { display:none; }
+footer { text-align:center; padding:40px 0; color:var(--slate); font-size:12px; }
+footer a { color:var(--teal); text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Ledger<span>Parity</span> Dashboard</h1>
+    <p>Reconciliation report viewer — load a JSON report to visualize results</p>
+  </header>
+
+  <div id="drop-zone" class="drop-zone">
+    <div class="icon">&#128206;</div>
+    <p>Drag &amp; drop a report JSON file here, or <strong>click to browse</strong></p>
+    <input type="file" id="file-input" accept=".json" style="display:none">
+  </div>
+
+  <div id="dashboard" class="hidden">
+    <div class="stats" id="stats"></div>
+    <div class="chart-section">
+      <h2>Result Breakdown</h2>
+      <div class="bar-chart" id="chart"></div>
+    </div>
+    <div class="table-section">
+      <h2>Detailed Results</h2>
+      <input type="text" id="search" placeholder="Search by ID, sender, recipient, asset...">
+      <table>
+        <thead>
+          <tr><th>Status</th><th>Type</th><th>Internal ID</th><th>Amount</th><th>Asset</th><th>Sender</th><th>Recipient</th><th>Delta</th><th>Notes</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="meta" id="meta"></div>
+  </div>
+
+  <footer>
+    LedgerParity &middot; MIT licensed &middot; <a href="https://ledgerparity.vercel.app/">docs</a>
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const dropZone = $('#drop-zone');
+const fileInput = $('#file-input');
+const dashboard = $('#dashboard');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('active'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('active'); handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const report = JSON.parse(e.target.result);
+      render(report);
+      dropZone.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+    } catch (err) {
+      alert('Invalid JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function render(r) {
+  const counts = r.discrepancy_counts || {};
+  const matchCount = r.total_matched || 0;
+  const discCount = r.total_discrepancies || 0;
+  const unkCount = r.total_unknown || 0;
+  const total = r.total_internal || 0;
+
+  $('#stats').innerHTML = `
+    <div class="stat-card total"><div class="value">${total}</div><div class="label">Total Records</div></div>
+    <div class="stat-card match"><div class="value">${matchCount}</div><div class="label">Exact Matches</div></div>
+    <div class="stat-card discrepancy"><div class="value">${discCount}</div><div class="label">Discrepancies</div></div>
+    <div class="stat-card unknown"><div class="value">${unkCount}</div><div class="label">Unknown</div></div>
+  `;
+
+  const types = [
+    { label: 'Match', count: matchCount, color: 'var(--green)' },
+    { label: 'Missing', count: counts['MISSING_ON_CHAIN'] || 0, color: 'var(--red)' },
+    { label: 'Amount', count: counts['AMOUNT_MISMATCH'] || 0, color: '#FF6B6B' },
+    { label: 'Duplicate', count: counts['DUPLICATE_INTERNAL'] || 0, color: '#FF8C42' },
+    { label: 'Orphaned', count: counts['ORPHANED_ON_CHAIN'] || 0, color: '#E056A0' },
+    { label: 'Status', count: counts['STATUS_MISMATCH'] || 0, color: '#FFB84A' },
+    { label: 'Invalid', count: counts['INVALID_DATA'] || 0, color: '#FF4D4D' },
+    { label: 'Unknown', count: unkCount, color: 'var(--amber)' },
+  ].filter(t => t.count > 0);
+
+  const max = Math.max(...types.map(t => t.count), 1);
+  $('#chart').innerHTML = types.map(t => `
+    <div class="bar" style="height:${Math.max((t.count/max)*140,4)}px;background:${t.color}">
+      <div class="count" style="color:${t.color}">${t.count}</div>
+      <div class="bar-label">${t.label}</div>
+    </div>
+  `).join('');
+
+  renderTable(r.results || []);
+  $('#search').addEventListener('input', e => renderTable(r.results || [], e.target.value));
+
+  const gen = r.generated_at ? new Date(r.generated_at).toLocaleString() : 'unknown';
+  $('#meta').innerHTML = `Generated: ${gen} &middot; Network: ${(r.coverage||{}).network||'unknown'} &middot; Window: ${(r.coverage||{}).start||'?'} → ${(r.coverage||{}).end||'?'}`;
+}
+
+function renderTable(results, filter) {
+  const q = (filter || '').toLowerCase();
+  const filtered = q ? results.filter(r => {
+    const ip = r.internal_payment || {};
+    const oc = r.on_chain_payment || {};
+    return [ip.id, ip.sender, ip.recipient, ip.asset, ip.amount, oc.asset_code, r.notes, r.discrepancy]
+      .some(v => (v||'').toLowerCase().includes(q));
+  }) : results;
+
+  $('#tbody').innerHTML = filtered.map(r => {
+    const ip = r.internal_payment || {};
+    const oc = r.on_chain_payment || {};
+    const status = (r.status || '').toLowerCase();
+    const badgeClass = status === 'exact' ? 'match' : status === 'discrepancy' ? 'discrepancy' : 'unknown';
+    const delta = r.amount_delta && r.amount_delta !== '0' ? `<span class="amount-delta">${r.amount_delta}</span>` : '—';
+    return `<tr>
+      <td><span class="badge ${badgeClass}">${r.status}</span></td>
+      <td>${r.discrepancy || '—'}</td>
+      <td>${ip.id || '—'}</td>
+      <td>${ip.amount || oc.amount || '—'}</td>
+      <td>${ip.asset || oc.asset_code || '—'}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${ip.sender||''}">${(ip.sender||'').substring(0,12)}…</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${ip.recipient||''}">${(ip.recipient||'').substring(0,12)}…</td>
+      <td>${delta}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${r.notes||''}">${r.notes||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
