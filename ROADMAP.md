@@ -14,3 +14,7 @@ Next: operator-validated export/discrepancy and report provenance. See docs/back
 ## Implementation update 2026-09-12
 
 Implemented follow-up: scoped SDP CSV configuration, versioned evidence bundles with exact source-byte hashes and offline replay, strict bounded CLI JSON and synthetic end-to-end SDP example. Next: consenting operator validation; authenticated provenance or durable checkpointing need separate designs. Runtime RPC ingestion remains gated in core.
+
+## Released preview
+
+Version 0.3.1-preview is published with downloadable platform archives and the offline dashboard. Local checksums and evidence replay are verified; the separate contract has synthetic testnet evidence and a lifetime monitor. See DELIVERY.md for exact release/CI links and remaining external gates. Real operator validation remains incomplete; broader payment semantics and durable ingestion are deferred product scope.
