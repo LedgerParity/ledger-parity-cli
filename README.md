@@ -10,6 +10,10 @@ See the [LedgerParity documentation](https://ledgerparity.vercel.app/) (also ava
 
 A read-only tool for Stellar payment operators to compare an application export with ordinary classic Stellar payment operations. It helps investigate settlement notifications that were missed, incorrect amounts and duplicate application records. Developer preview: no demonstrated operator adoption or production-readiness claim.
 
+Download [v0.3.1-preview](https://github.com/LedgerParity/ledger-parity-cli/releases/tag/v0.3.1-preview) for Windows, Linux or macOS, with SHA-256 checksums and the offline dashboard included. See [release notes](RELEASE_NOTES.md) for installation and validation limits.
+
+The [delivery record](DELIVERY.md) lists completed software, verification evidence and the external gates remaining before production readiness.
+
 Version 0.3.0-preview adds a release-scoped **SDP 7.0.0 CSV workflow** and **offline evidence replay**. See [runnable SDP example](docs/SDP_EVIDENCE.md): export mapping requires independently known sender/network/settlement scope, preserves business references and leaves export completeness unproven. `--bundle new-file.json` captures evidence alongside a report; `--replay new-file.json` verifies and re-evaluates it offline. These are implemented features with synthetic contract tests, not deployed SDP or production validation.
 
 From this repository alone, install Go 1.22.2+ (prefer a currently supported Go release), then:
