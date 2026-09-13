@@ -9,6 +9,7 @@ import (
 	"github.com/LedgerParity/ledger-parity-cli/pkg/config"
 	"github.com/LedgerParity/ledger-parity-cli/pkg/evidence"
 	"github.com/LedgerParity/ledger-parity-cli/pkg/output"
+	"github.com/LedgerParity/ledger-parity-cli/pkg/verify"
 	"github.com/LedgerParity/ledger-parity-connectors/pkg/connector"
 	"github.com/LedgerParity/ledger-parity-connectors/pkg/file"
 	"github.com/LedgerParity/ledger-parity-connectors/pkg/sdp"
@@ -43,6 +44,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	demo := flags.Bool("demo", false, "Run deterministic offline fixtures")
 	bundlePath := flags.String("bundle", "", "Create a new replayable evidence file")
 	replayPath := flags.String("replay", "", "Verify and replay evidence offline; no configuration/network access")
+	verifyPath := flags.String("verify", "", "After report, store SHA-256 hash (writes .proof.json)")
+	verifyCheck := flags.String("verify-check", "", "Verify a report against a saved proof file")
 	version := flags.Bool("version", false, "Show version")
 	if err := flags.Parse(args); err != nil {
 		if err == flag.ErrHelp {
@@ -57,6 +60,28 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if *version {
 		fmt.Fprintln(stdout, Version)
 		return 0
+	}
+	if *verifyCheck != "" {
+		if *demo || *cfgPath != "" || *bundlePath != "" {
+			return fail(fmt.Errorf("verify-check cannot be combined with config, demo or bundle"))
+		}
+		if flags.NArg() == 0 {
+			return fail(fmt.Errorf("supply a report JSON path to verify"))
+		}
+		proof, err := verify.LoadProof(*verifyCheck)
+		if err != nil {
+			return fail(err)
+		}
+		hash, err := verify.HashReport(flags.Arg(0))
+		if err != nil {
+			return fail(err)
+		}
+		if hash == proof.Hash {
+			fmt.Fprintf(stdout, "VERIFIED: report matches proof (hash=%s)\n", hash[:16])
+			return 0
+		}
+		fmt.Fprintf(stderr, "MISMATCH: report hash %s != proof hash %s\n", hash[:16], proof.Hash[:16])
+		return 1
 	}
 	if *replayPath != "" {
 		if *demo || *cfgPath != "" || *bundlePath != "" {
@@ -157,6 +182,29 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		if samePath(*bundlePath, cfg.Output.FilePath) {
 			return fail(fmt.Errorf("report resolves to evidence file; refusing overwrite"))
 		}
+	}
+	if *verifyPath != "" {
+		reportPath := cfg.Output.FilePath
+		if reportPath == "-" {
+			return fail(fmt.Errorf("--verify cannot write proof when report goes to stdout"))
+		}
+		hash, err := verify.HashReport(reportPath)
+		if err != nil {
+			return fail(err)
+		}
+		proof := &verify.Proof{
+			Hash:    hash,
+			Owner:   "ledger-parity",
+			Network: cfg.Stellar.Network,
+		}
+		proofPath := *verifyPath
+		if proofPath == "auto" {
+			proofPath = reportPath + ".proof.json"
+		}
+		if err := verify.SaveProof(proofPath, proof); err != nil {
+			return fail(err)
+		}
+		fmt.Fprintf(stderr, "Verification proof saved: %s (hash=%s)\n", proofPath, hash[:16])
 	}
 	return render(report, cfg.Output.Format, cfg.Output.FilePath, stdout, stderr)
 }
