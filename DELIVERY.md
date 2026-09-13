@@ -2,7 +2,7 @@
 
 ## Download and run
 
-- [CLI v0.3.1-preview](https://github.com/LedgerParity/ledger-parity-cli/releases/tag/v0.3.1-preview): Windows amd64, Linux amd64/arm64, macOS amd64/arm64 archives and SHA256SUMS. Each archive includes examples, documentation and the offline dashboard.
+- [CLI v0.3.2-preview](https://github.com/LedgerParity/ledger-parity-cli/releases/tag/v0.3.2-preview): Windows amd64, Linux amd64/arm64, macOS amd64/arm64 archives and SHA256SUMS. Each archive includes examples, documentation and the offline dashboard.
 - [Contract v0.2.0-preview](https://github.com/LedgerParity/-ledger-parity-contract/releases/tag/v0.2.0-preview): Wasm and SHA256SUMS, independently deployable from the read-only CLI.
 - [Documentation](https://ledgerparity.github.io/).
 
