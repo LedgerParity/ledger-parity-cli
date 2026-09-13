@@ -24,7 +24,7 @@ try {
         $exe = if ($env:GOOS -eq 'windows') { 'ledger-parity.exe' } else { 'ledger-parity' }
         & $Go build -trimpath -o (Join-Path $stage $exe) ./cmd/ledger-parity
         if ($LASTEXITCODE -ne 0) { throw "Build failed for $target" }
-        foreach ($item in @('LICENSE', 'README.md', 'RELEASE_NOTES.md', 'examples', 'dashboard', 'docs')) {
+        foreach ($item in @('LICENSE', 'README.md', 'RELEASE_NOTES.md', 'assets', 'examples', 'dashboard', 'docs')) {
             Copy-Item -LiteralPath (Join-Path $repo $item) -Destination $stage -Recurse
         }
         Compress-Archive -Path $stage -DestinationPath (Join-Path $dest "$name.zip")

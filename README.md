@@ -1,4 +1,4 @@
-﻿# ledger-parity-cli
+# ledger-parity-cli
 
 ![LedgerParity](assets/lp-banner.png)
 
@@ -10,7 +10,7 @@ See the [LedgerParity documentation](https://ledgerparity.vercel.app/) (also ava
 
 A read-only tool for Stellar payment operators to compare an application export with ordinary classic Stellar payment operations. It helps investigate settlement notifications that were missed, incorrect amounts and duplicate application records. Developer preview: no demonstrated operator adoption or production-readiness claim.
 
-Download [v0.3.1-preview](https://github.com/LedgerParity/ledger-parity-cli/releases/tag/v0.3.1-preview) for Windows, Linux or macOS, with SHA-256 checksums and the offline dashboard included. See [release notes](RELEASE_NOTES.md) for installation and validation limits.
+Download [v0.3.2-preview](https://github.com/LedgerParity/ledger-parity-cli/releases/tag/v0.3.2-preview) for Windows, Linux or macOS, with SHA-256 checksums and the offline dashboard included. See [release notes](RELEASE_NOTES.md) for installation and validation limits.
 
 The [delivery record](DELIVERY.md) lists completed software, verification evidence and the external gates remaining before production readiness.
 
