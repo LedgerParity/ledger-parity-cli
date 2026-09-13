@@ -37,6 +37,25 @@ Exit codes: **0** no findings, **1** config/input/network/output error, **2** di
 
 A **[reconciliation dashboard](dashboard/)** is included: open `dashboard/index.html` in a browser and drag-drop the JSON report to visualize matches, discrepancies, and unknowns with search and charts.
 
+### Report verification
+
+Store a tamper-proof proof after generating a report:
+
+```sh
+./ledger-parity --config examples/config.json --format json --out report.json \
+  --verify auto
+# writes report.json.proof.json with SHA-256 hash
+```
+
+Verify a report against a saved proof:
+
+```sh
+./ledger-parity --verify-check report.json.proof.json report.json
+# prints VERIFIED or MISMATCH
+```
+
+The [Soroban contract](contract/) stores hashes on-chain for independent verification. Deploy separately; the CLI stores local proofs by default.
+
 For live read-only ingestion, copy examples/config.json, replace `stellar.on_chain_path` with `stellar.horizon_url`, set the exact network passphrase and monitored accounts, and provide a canonical application export. Always use an explicit RFC3339 start/end window. The CLI expands the Horizon scan by the time tolerance. `target_app.complete` asserts that the export contains every relevant ordinary payment for those accounts/window; leave false unless you can establish that. No secrets or wallets are needed. An optional public-testnet smoke check is available with `powershell -File scripts/Test-LiveRead.ps1` after a Windows build; it synthesizes an expected row from public testnet data and documents that evidence limit.
 
 The canonical export contract lives in [connectors](https://github.com/LedgerParity/ledger-parity-connectors), matching/coverage semantics in [core](https://github.com/LedgerParity/ledger-parity-core). Required fields include network passphrase, operation_type `payment`, exact sender/recipient, amount as a decimal string, asset/type/issuer, timestamp (or explicit settlement interval) and status. Operation ID is recommended; reference ID means transaction hash only. Exact amounts, case-sensitive asset codes and issuers, network and direction are never bypassed by a reference. Non-completed statuses without observed settlement remain UNKNOWN. Examples are bundled into the binary for standalone use.
