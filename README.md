@@ -69,3 +69,8 @@ The canonical export contract lives in [connectors](https://github.com/LedgerPar
 Supported: canonical JSON/CSV and release-scoped SDP CSV input, ordinary Horizon payment operations, bounded pagination/retries, explicit coverage and versioned offline evidence replay. Expectations use a timestamp or explicit settlement interval, never both. Unsupported: runtime Soroban/RPC ingestion, path payments, account creation/merge settlement, memo matching, durable automatic checkpoints, signing or fund movement. Named Stellopay/Facil-Pay/Trustless Work packages remain experimental examples, not CLI adapters. Provider completeness is trusted evidence, not a cryptographic proof. StrKey checksums and general muxed/base-account equivalence are not validated. Review reports before operational decisions.
 
 [Reviewer walkthrough](docs/REVIEWER_WALKTHROUGH.md) · [verification](PROJECT_HANDOFF.md) · [roadmap](ROADMAP.md) · [appeal draft](docs/DRIPS_SUBMISSION_PREP.md) · [contributing](CONTRIBUTING.md) · [security](SECURITY.md) · [MIT](LICENSE).
+
+## Stellar Wave submission preparation
+
+See the [submission brief](docs/SUBMISSION.md), [verification record](docs/VERIFICATION_OCT09.md),
+[maintainers](MAINTAINERS.md), and [focused contributor backlog](docs/WAVE_BACKLOG.md).
