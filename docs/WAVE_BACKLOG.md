@@ -33,7 +33,7 @@ scripts/Test-LiveRead.ps1; cmd/ledger-parity/; docs/VERIFICATION.md
 
 ## Contribution Guidelines
 
-Agree bounded scope with xteesamz or EthTobi through GitHub. Use a focused PR
+Agree bounded scope with EthTobi through GitHub. Use a focused PR
 with `Closes #<issue_id>`, actual check results, and remaining limitations.
 
 ## 2. Record a consenting operator reconciliation case
@@ -65,7 +65,7 @@ docs/OPERATOR_VALIDATION.md; docs/VERIFICATION.md; examples/
 
 ## Contribution Guidelines
 
-Agree bounded scope with xteesamz or EthTobi through GitHub. Use a focused PR
+Agree bounded scope with EthTobi through GitHub. Use a focused PR
 with `Closes #<issue_id>`, actual check results, and remaining limitations.
 
 ## 3. Specify and test cross-version evidence replay compatibility
@@ -97,7 +97,7 @@ pkg/evidence/; docs/SDP_EVIDENCE.md; test fixtures
 
 ## Contribution Guidelines
 
-Agree bounded scope with xteesamz or EthTobi through GitHub. Use a focused PR
+Agree bounded scope with EthTobi through GitHub. Use a focused PR
 with `Closes #<issue_id>`, actual check results, and remaining limitations.
 
 ## 4. Measure large-export memory and latency before streaming
@@ -129,7 +129,7 @@ cmd/ledger-parity/; pkg/evidence/; benchmarks/
 
 ## Contribution Guidelines
 
-Agree bounded scope with xteesamz or EthTobi through GitHub. Use a focused PR
+Agree bounded scope with EthTobi through GitHub. Use a focused PR
 with `Closes #<issue_id>`, actual check results, and remaining limitations.
 
 ## 5. Expose concise UNKNOWN coverage reasons in operator output
@@ -162,7 +162,7 @@ pkg/output/; dashboard/index.html; dashboard/viewer.test.cjs
 
 ## Contribution Guidelines
 
-Agree bounded scope with xteesamz or EthTobi through GitHub. Use a focused PR
+Agree bounded scope with EthTobi through GitHub. Use a focused PR
 with `Closes #<issue_id>`, actual check results, and remaining limitations.
 
 ## 6. Add a release archive acceptance check on Linux
@@ -195,7 +195,7 @@ Actual enrollment and points must be set in the Drips app after approval.
 
 ## Contribution Guidelines
 
-Agree bounded scope with xteesamz or EthTobi through GitHub. Use a focused PR
+Agree bounded scope with EthTobi through GitHub. Use a focused PR
 with `Closes #<issue_id>`, actual check results, and remaining limitations.
 
 ## Published issue links
